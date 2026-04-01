@@ -1,10 +1,4 @@
-<!--
- * @Author: dushuai
- * @Date: 2024-04-12 11:02:43
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-12 18:14:57
- * @description: readme
--->
+
 
 # React-Mboile-Template
 

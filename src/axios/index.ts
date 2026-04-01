@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2023-03-14 17:53:45
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-30 14:42:43
- * @description: axios
- */
+
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import qs from 'qs';
 import { cancelRequest } from './requestCancel';
@@ -28,7 +22,7 @@ service.interceptors.request.use(
     // 添加token
     const token = useAppStore.getState().token;
 
-    if(token) {
+    if (token) {
       config.headers['token'] = token;
     }
 
@@ -52,14 +46,14 @@ service.interceptors.response.use(
     /**
      * 处理错误响应
      */
-    if(whiteList.some(e => e.match(url))) {
+    if (whiteList.some(e => e.match(url))) {
       console.log('接口通过白名单，不需要异常处理url:>> ', url);
     } else {
       ErrorCodeHandle(response);
     }
 
     // console.log('响应拦截 response:>> ', response)
-    if(response.data.code === 200) {
+    if (response.data.code === 200) {
       return response;
     } else {
       console.error('响应异常:>> ', response);
@@ -73,9 +67,9 @@ service.interceptors.response.use(
      */
     console.error('响应异常:>> ', err);
 
-    if(err.code === 'ERR_CANCELED') {
+    if (err.code === 'ERR_CANCELED') {
       console.log('请求取消url:>> ', err.config?.url);
-    } else if(err.code === 'ECONNABORTED' && err.message.includes('timeout')) {
+    } else if (err.code === 'ECONNABORTED' && err.message.includes('timeout')) {
       // message.error('请求超时,请检查服务器状态')
       return Promise.reject(err);
     } else {

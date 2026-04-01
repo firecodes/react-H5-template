@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-03-29 16:17:20
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-13 23:38:44
- * @description: 路由表
- */
+
 import { ComponentType, lazy } from 'react';
 import { RouteObject } from 'react-router-dom';
 

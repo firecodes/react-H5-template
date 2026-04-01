@@ -1,10 +1,3 @@
-/*
- * @Author: dushuai
- * @Date: 2024-04-11 11:10:56
- * @LastEditors: dushuais 1137896420@qq.com
- * @LastEditTime: 2024-08-08 21:29:04
- * @description: 动态路由相关
- */
 
 /**
  * 动态配置路由 ------ 这里是前端自己的动态路由

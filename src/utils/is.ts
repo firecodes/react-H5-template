@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2023-04-07 17:58:21
- * @LastEditors: dushuai
- * @LastEditTime: 2023-04-07 17:58:33
- * @description: is类型推断
- */
+
 export function isNumber<T extends number>(value: T | unknown): value is number {
   return Object.prototype.toString.call(value) === '[object Number]';
 }
@@ -33,7 +27,7 @@ export function isArray<T extends any[]>(value: T | unknown): value is T {
   return Object.prototype.toString.call(value) === '[object Array]';
 }
 
-export function isFunction<T extends(...args: any[]) => any | void | never>(value: T | unknown): value is T {
+export function isFunction<T extends (...args: any[]) => any | void | never>(value: T | unknown): value is T {
   return Object.prototype.toString.call(value) === '[object Function]';
 }
 

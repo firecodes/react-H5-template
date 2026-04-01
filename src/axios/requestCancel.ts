@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2023-04-03 10:50:16
- * @LastEditors: dushuai
- * @LastEditTime: 2023-04-03 12:29:50
- * @description: 取消重复请求
- */
+
 import type { AxiosRequestConfig } from 'axios';
 import qs from 'qs';
 
@@ -50,7 +44,7 @@ class CancelRequest {
   removePending(config: AxiosRequestConfig): void {
     const key = getPendingUrl(config);
 
-    if(pendingMap.has(key)) {
+    if (pendingMap.has(key)) {
       const val = pendingMap.get(key);
       val?.c.abort();
       pendingMap.delete(key);

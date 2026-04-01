@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-04-12 18:09:03
- * @LastEditors: dushuai
- * @LastEditTime: 2024-08-10 13:21:01
- * @description: 枚举文件
- */
+
 
 export const APP_KEY = 'react-mobile-template';
 

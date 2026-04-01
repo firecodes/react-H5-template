@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-04-12 15:44:41
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-30 15:51:38
- * @description: 测试弹窗组件
- */
+
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { CenterPopup } from 'antd-mobile';
 import styles from './PopTest.module.less';

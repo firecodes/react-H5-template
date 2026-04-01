@@ -1,10 +1,3 @@
-/*
- * @Author: dushuai
- * @Date: 2023-03-21 16:52:49
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-07 17:32:19
- * @description: 工具方法
- */
 
 /**
  * 格式化时间 Date 转化为指定格式的String
@@ -17,11 +10,11 @@
  * // => 2023-03-23 15:30:59:60 星期四 01
 */
 export const formatDate = (date?: string | number | Date, fmt?: string): string => {
-  if(date === void 0) date = new Date();
-  if(fmt === void 0) fmt = 'yyyy-MM-dd HH:mm:ss';
-  if(typeof date === 'string') {
+  if (date === void 0) date = new Date();
+  if (fmt === void 0) fmt = 'yyyy-MM-dd HH:mm:ss';
+  if (typeof date === 'string') {
     date = new Date(date);
-  } else if(typeof date === 'number') {
+  } else if (typeof date === 'number') {
     date = new Date(date);
   }
   const o = {
@@ -43,13 +36,13 @@ export const formatDate = (date?: string | number | Date, fmt?: string): string 
     '5': '\u4e94',
     '6': '\u516d'
   };
-  if(/(y+)/.test(fmt)) {
+  if (/(y+)/.test(fmt)) {
     fmt = fmt.replace(
       RegExp.$1,
       (date.getFullYear() + '').substr(4 - RegExp.$1.length)
     );
   }
-  if(/(E+)/.test(fmt)) {
+  if (/(E+)/.test(fmt)) {
     fmt = fmt.replace(
       RegExp.$1,
       (RegExp.$1.length > 1
@@ -59,8 +52,8 @@ export const formatDate = (date?: string | number | Date, fmt?: string): string 
         : '') + week[date.getDay() + '' as keyof typeof week]
     );
   }
-  for(const k in o) {
-    if(new RegExp('(' + k + ')').test(fmt)) {
+  for (const k in o) {
+    if (new RegExp('(' + k + ')').test(fmt)) {
       type O = keyof typeof o
 
       fmt = fmt.replace(
@@ -80,7 +73,7 @@ export const formatDate = (date?: string | number | Date, fmt?: string): string 
  * @returns {number} 时间戳
 */
 export const getTimestamp = (date?: string | number): number => {
-  if(typeof date === 'number' || !date) date = formatDate(date);
+  if (typeof date === 'number' || !date) date = formatDate(date);
   return new Date(date.replace(/-/g, '/')).getTime();
 };
 
@@ -91,17 +84,17 @@ export const getTimestamp = (date?: string | number): number => {
  * @returns {string | object} 传了name返回值string，不传则为object
  */
 export const getUrlParam = (url?: string, name?: string): string | object => {
-  if(!url || url === '') url = window.location.search;
+  if (!url || url === '') url = window.location.search;
   url = decodeURIComponent(url);
   url = url.substring(url.indexOf('?') + 1);
   const obj: { [key: string]: string } = {};
   const urlList: string[] = url.split('&');
-  if(!url || url === '') return obj;
+  if (!url || url === '') return obj;
   urlList.forEach(url => {
     const q: string[] = url.split('=');
     obj[q[0]] = q[1];
   });
-  if(name) return obj[name];
+  if (name) return obj[name];
   return obj;
 };
 
@@ -114,7 +107,7 @@ export const randomString = (e: number = 32): string => {
   const t: string = 'ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678',
     a: number = t.length;
   let n: string = '';
-  for(let i = 0; i < e; i++) n += t.charAt(Math.floor(Math.random() * a));
+  for (let i = 0; i < e; i++) n += t.charAt(Math.floor(Math.random() * a));
   return n;
 };
 
@@ -127,9 +120,9 @@ export const randomString = (e: number = 32): string => {
 */
 export const INDEXLIST = (num: number, min: number = 10, max: number = 50): number[] => {
   const RLIST: number[] = [];
-  while(RLIST.length < num) {
+  while (RLIST.length < num) {
     const MRNUMBER: number = Math.floor(Math.random() * (max - min) + min);
-    if(RLIST.indexOf(MRNUMBER) === -1) {
+    if (RLIST.indexOf(MRNUMBER) === -1) {
       RLIST.push(MRNUMBER);
     }
   }
@@ -143,7 +136,7 @@ export const INDEXLIST = (num: number, min: number = 10, max: number = 50): numb
 */
 export const FIVETEEN = (num: number): number[] => {
   const tempArr: number[] = [];
-  for(let i = 0; i < num; i++) {
+  for (let i = 0; i < num; i++) {
     tempArr.push(Math.floor(Math.random() * 99));
   }
   return tempArr;
@@ -157,7 +150,7 @@ export const FIVETEEN = (num: number): number[] => {
  */
 export const getEnumKey = <R extends string, T extends { [key: string]: R }>(enumObj: T, val: T[keyof T]): keyof T => {
   const keys = Object.keys(enumObj);
-  if(keys.length < 0) return '';
+  if (keys.length < 0) return '';
   const key = keys.filter(k => enumObj[k] === val);
   return key.length > 0 ? key[0] : '';
 };
@@ -171,14 +164,14 @@ export const getEnumKey = <R extends string, T extends { [key: string]: R }>(enu
 export const $copy = (text: string, origin: boolean = true): Promise<boolean> => {
   return new Promise((resolve, reject) => {
     let input: HTMLInputElement | HTMLTextAreaElement;
-    if(origin) input = document.createElement('textarea');
+    if (origin) input = document.createElement('textarea');
     else input = document.createElement('input');
 
     input.setAttribute('readonly', 'readonly');
     input.value = text;
     document.body.appendChild(input);
     input.select();
-    if(document.execCommand('copy')) {
+    if (document.execCommand('copy')) {
       document.execCommand('copy');
       resolve(true);
     } else {
@@ -206,7 +199,7 @@ export const getImageUrl = (name: string): string => {
  * @param {number} offset 安全范围，范围内不进行滚动 可选，默认10
  */
 export const scrollPageTo = (scroll: number, id: string = 'app', duration: number = 250, offset: number = 10): void => {
-  if(!document.getElementById(id)) return;
+  if (!document.getElementById(id)) return;
 
   const requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
   // const cancelAnimationFrame = window.cancelAnimationFrame || window.mozCancelAnimationFrame
@@ -218,19 +211,19 @@ export const scrollPageTo = (scroll: number, id: string = 'app', duration: numbe
   let scrollY: number = scrollTop,
     oldTimestamp: number | null = null;
 
-  if((scrollTop - totalScrollDistance <= offset && scrollTop - totalScrollDistance >= 0) ||
+  if ((scrollTop - totalScrollDistance <= offset && scrollTop - totalScrollDistance >= 0) ||
     (totalScrollDistance - scrollTop <= offset && totalScrollDistance - scrollTop >= 0)) return;
 
   function step(newTimestamp: number): void {
-    if(oldTimestamp !== null) {
-      if(scrollY <= totalScrollDistance && isDown) {
+    if (oldTimestamp !== null) {
+      if (scrollY <= totalScrollDistance && isDown) {
         scrollY += (totalScrollDistance - scrollTop) / duration * (newTimestamp - oldTimestamp);
-      } else if(scrollY > totalScrollDistance && !isDown) {
+      } else if (scrollY > totalScrollDistance && !isDown) {
         scrollY -= (scrollTop - totalScrollDistance) / duration * (newTimestamp - oldTimestamp);
       }
       document.getElementById(id)!.scrollTop = scrollY;
     }
-    if((scrollY <= totalScrollDistance && isDown) || (scrollY >= totalScrollDistance && !isDown)) {
+    if ((scrollY <= totalScrollDistance && isDown) || (scrollY >= totalScrollDistance && !isDown)) {
       oldTimestamp = newTimestamp;
       requestAnimationFrame(step);
     }
@@ -246,14 +239,14 @@ export const scrollPageTo = (scroll: number, id: string = 'app', duration: numbe
  * @returns cloneSource
  */
 export function deepClone<T>(source: T): T {
-  if(!source && typeof source !== 'object') {
+  if (!source && typeof source !== 'object') {
     throw new Error('error arguments deepClone');
   }
   const targetObj = (source!.constructor === Array ? [] : {}) as T;
 
   Object.keys(source!).forEach(keys => {
     type K = keyof typeof source
-    if(source![keys as K] && typeof source![keys as K] === 'object') {
+    if (source![keys as K] && typeof source![keys as K] === 'object') {
       targetObj[keys as K] = deepClone(source![keys as K]);
     } else {
       targetObj[keys as K] = source![keys as K];

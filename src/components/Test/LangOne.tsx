@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-08-10 12:56:49
- * @LastEditors: dushuai
- * @LastEditTime: 2024-08-10 16:52:39
- * @description: 心平气和
- */
+
 
 import { useSettings, useSelector } from '@/store';
 

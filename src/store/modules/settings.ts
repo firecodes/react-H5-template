@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-04-18 15:09:58
- * @LastEditors: dushuai
- * @LastEditTime: 2024-08-10 13:24:16
- * @description: settings store
- */
+
 import { StoreKey } from '@/common';
 import { MakeState, createCustomStore } from '../store';
 import { createJSONStorage } from 'zustand/middleware';
@@ -54,7 +48,7 @@ export const useSettings = createCustomStore(
 
       const state = initialState();
 
-      if(version !== APP_STORE_VERSION) {
+      if (version !== APP_STORE_VERSION) {
         Object.assign(state, persistedState);
       }
 

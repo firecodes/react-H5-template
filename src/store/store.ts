@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-04-18 12:28:06
- * @LastEditors: dushuai
- * @LastEditTime: 2024-08-10 13:28:02
- * @description: 创建自定义store
- */
+
 import { StoreKey } from '@/common';
 import { StoreApi, UseBoundStore, create } from 'zustand';
 import { PersistOptions, combine, devtools, persist } from 'zustand/middleware';
@@ -57,9 +51,9 @@ export function createCustomStore<T extends object, M>(
   type Set = Partial<MakeState & T>
 
   type Update =
-  | State
-  | Partial<State>
-  | ((state: State) => State | Partial<State>);
+    | State
+    | Partial<State>
+    | ((state: State) => State | Partial<State>);
 
   return create(devtools(
     persist(
@@ -92,7 +86,7 @@ export function createCustomStore<T extends object, M>(
           }
         })
       ),
-        persistOptions as never
+      persistOptions as never
     ),
     { name, enabled: true }
   ));

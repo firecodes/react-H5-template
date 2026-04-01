@@ -1,11 +1,4 @@
 
-/*
-* @Author: dushuai
-* @Date: 2024-03-29 16:13:37
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-30 14:40:11
-* @description: login
-*/
 import { useNavigate, useSearchParams, useSubmit } from 'react-router-dom';
 
 import { useSettings } from '@/store';

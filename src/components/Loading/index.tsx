@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-03-29 18:14:56
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-13 22:49:21
- * @description: loading 组件
- */
+
 import { useMemo } from 'react';
 import { useSetState } from 'ahooks';
 

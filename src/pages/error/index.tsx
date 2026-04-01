@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-03-29 17:33:13
- * @LastEditors: dushuai
- * @LastEditTime: 2024-04-07 17:34:57
- * @description: error page
- */
+
 import { Link, useRouteError } from 'react-router-dom';
 
 export default function ErrorPage() {

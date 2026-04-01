@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-04-17 14:49:31
- * @LastEditors: dushuai
- * @LastEditTime: 2024-08-10 11:11:41
- * @description: app store
- */
+
 import { StoreKey } from '@/common';
 import { create } from 'zustand';
 import { createJSONStorage, persist, devtools } from 'zustand/middleware';
@@ -67,7 +61,7 @@ export const useAppStore = create<Store & Actions>()(devtools(
 
         const state = initialState();
 
-        if(version !== APP_STORE_VERSION) {
+        if (version !== APP_STORE_VERSION) {
           Object.assign(state, persistedState);
         }
 

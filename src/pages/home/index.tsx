@@ -1,10 +1,4 @@
-/*
- * @Author: dushuai
- * @Date: 2024-03-29 16:10:20
- * @LastEditors: dushuai
- * @LastEditTime: 2024-08-10 13:34:49
- * @description: Home
- */
+
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate, useFetcher } from 'react-router-dom';
 import { Button } from 'antd-mobile';
@@ -39,7 +33,7 @@ function App() {
   const fetcher = useFetcher();
 
   function handleJumpLogin() {
-    navigate('/login', { state: { b: 666 }});
+    navigate('/login', { state: { b: 666 } });
   }
 
   const token = useAppStore(state => state.token);
@@ -89,10 +83,10 @@ function App() {
         </button>
         {/* <div>theme: {theme}</div> */}
         <button onClick={() => SET_THEME('dark')} className="p-4 bg-pink-400">
-        dark
+          dark
         </button>
         <button onClick={() => SET_THEME('light')} className="p-4 bg-violet-500 ml-4">
-        light
+          light
         </button>
         <LoadingIcon className="fill-[#1d93ab] w-16 h-16" />
         <ViteLogo />
