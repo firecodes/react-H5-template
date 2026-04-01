@@ -1,0 +1,692 @@
+---
+globs: '**/*.{less,css}'
+description: 样式编写规范 - BEM 命名、Less 使用、CSS Modules、移动端适配
+---
+
+# 样式编写规范
+
+## 🎨 BEM 命名规范
+
+### BEM 命名结构
+
+```
+Block_Element__Modifier
+```
+
+### 核心规则
+
+1. **Block（块）**：独立的组件，使用小驼峰（camelCase）
+2. **Element（元素）**：Block 的组成部分，使用**单下划线 `_`** 连接
+3. **Modifier（修饰符）**：Block 或 Element 的变体，使用**双下划线 `__`** 连接
+
+### 详细说明
+
+#### Block 命名
+
+- 第一个单词小写，后续单词首字母大写
+- 页面建议使用 `页面名 + Page` 格式
+- 组件建议使用功能名称
+
+```less
+// ✅ 正确
+.loginPage {
+} // 登录页面
+.homePage {
+} // 首页
+.userCard {
+} // 用户卡片
+.productList {
+} // 产品列表
+.navBar {
+} // 导航栏
+
+// ❌ 错误
+.LoginPage {
+} // 不使用 PascalCase
+.login-page {
+} // 不使用 kebab-case
+.login_page {
+} // 不使用 snake_case
+```
+
+#### Element 命名
+
+- Block 名称 + 单下划线 `_` + 元素名称（小驼峰）
+- 表示 Block 的组成部分
+
+```less
+// ✅ 正确
+.loginPage_header {
+} // 登录页的头部
+.loginPage_form {
+} // 登录页的表单
+.loginPage_submitButton {
+} // 登录页的提交按钮
+.userCard_avatar {
+} // 用户卡片的头像
+.userCard_userName {
+} // 用户卡片的用户名
+
+// ❌ 错误
+.loginPage-header {
+} // 使用 `-`
+.loginPage__header {
+} // 使用 `__`（这是 Modifier）
+.header {
+} // 缺少 Block 前缀
+.loginPageHeader {
+} // 直接连接（无分隔符）
+```
+
+#### Modifier 命名
+
+- Block/Element 名称 + 双下划线 `__` + 修饰符名称（小驼峰）
+- 表示状态、变体或不同版本
+
+```less
+// ✅ 正确：Block 的 Modifier
+.loginPage__loading {
+} // 登录页的加载状态
+.loginPage__disabled {
+} // 登录页的禁用状态
+.userCard__active {
+} // 用户卡片的激活状态
+.userCard__compact {
+} // 用户卡片的紧凑模式
+
+// ✅ 正确：Element 的 Modifier
+.loginPage_button__primary {
+} // 登录页按钮的主要样式
+.loginPage_button__disabled {
+} // 登录页按钮的禁用状态
+.userCard_avatar__large {
+} // 用户卡片头像的大尺寸
+
+// ❌ 错误
+.loginPage-loading {
+} // 使用 `-`
+.loginPage--loading {
+} // 使用 `--`（已禁止）
+.loginPage_loading {
+} // 使用单下划线（这是 Element）
+```
+
+### 命名对照表
+
+| 类型               | 连接符     | 示例                         | 场景                |
+| ------------------ | ---------- | ---------------------------- | ------------------- |
+| Block              | 无         | `.loginPage`                 | 独立组件            |
+| Element            | `_`        | `.loginPage_header`          | Block 的组成部分    |
+| Modifier           | `__`       | `.loginPage__loading`        | Block 的状态/变体   |
+| Element + Modifier | `_` + `__` | `.loginPage_button__primary` | Element 的状态/变体 |
+
+## 📝 Less 编写规范
+
+### 1. 使用嵌套保持 BEM 结构
+
+```less
+// ✅ 推荐：使用 LESS 嵌套，但保持 BEM 命名清晰
+.loginPage {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f5f5;
+
+  // Element: loginPage_header
+  &_header {
+    padding: 16px;
+    background: #fff;
+
+    // Modifier: loginPage_header__sticky
+    &__sticky {
+      position: sticky;
+      top: 0;
+    }
+  }
+
+  // Element: loginPage_content
+  &_content {
+    flex: 1;
+    padding: 16px;
+  }
+
+  // Element: loginPage_button
+  &_button {
+    height: 44px;
+    border-radius: 8px;
+
+    // Modifier: loginPage_button__primary
+    &__primary {
+      background: #1677ff;
+      color: #fff;
+    }
+
+    // Modifier: loginPage_button__disabled
+    &__disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+  }
+}
+
+// Modifier: loginPage__fullscreen
+.loginPage__fullscreen {
+  height: 100vh;
+  overflow: hidden;
+}
+```
+
+### 2. 使用全局变量
+
+```less
+// 导入全局变量
+@import '@/styles/variables.less';
+
+.myPage {
+  // ✅ 使用全局变量
+  color: @primary-color;
+  font-size: @font-size-base;
+  padding: @spacing-base;
+  border-radius: @border-radius-base;
+
+  &_header {
+    background: @bg-color-light;
+    box-shadow: @box-shadow-base;
+  }
+
+  &_button {
+    height: @button-height-base;
+
+    &__primary {
+      background: @primary-color;
+
+      &:hover {
+        background: @primary-color-hover;
+      }
+    }
+  }
+}
+```
+
+### 3. 响应式设计
+
+```less
+.myPage {
+  padding: 16px;
+
+  // 小屏幕
+  @media (max-width: 375px) {
+    padding: 12px;
+  }
+
+  // 大屏幕
+  @media (min-width: 768px) {
+    max-width: 750px;
+    margin: 0 auto;
+  }
+
+  &_content {
+    font-size: 14px;
+
+    @media (max-width: 375px) {
+      font-size: 12px;
+    }
+  }
+}
+```
+
+## 🎯 CSS Modules
+
+### 1. 文件命名
+
+- 样式文件必须使用 `.module.less` 后缀
+- 与组件文件同名
+
+```
+Component/
+├── index.tsx
+└── index.module.less    ✅ 必须使用 .module.less
+```
+
+### 2. 在组件中使用
+
+```typescript
+import styles from './index.module.less'
+
+const MyPage: FC = () => {
+  return (
+    <div className={styles.myPage}>
+      <div className={styles.myPage_header}>
+        <h1 className={styles.myPage_title}>标题</h1>
+      </div>
+
+      {/* 使用多个类名 */}
+      <button
+        className={`${styles.myPage_button} ${styles.myPage_button__primary}`}
+      >
+        按钮
+      </button>
+
+      {/* 条件类名 */}
+      <div
+        className={`${styles.myPage_content} ${isLoading ? styles.myPage__loading : ''}`}
+      >
+        内容
+      </div>
+    </div>
+  )
+}
+```
+
+### 3. 使用 classnames 库
+
+```typescript
+import classNames from 'classnames'
+import styles from './index.module.less'
+
+const MyPage: FC = () => {
+  const [isActive, setIsActive] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  return (
+    <div
+      className={classNames(
+        styles.myPage,
+        {
+          [styles.myPage__active]: isActive,
+          [styles.myPage__loading]: isLoading,
+        }
+      )}
+    >
+      <button
+        className={classNames(
+          styles.myPage_button,
+          styles.myPage_button__primary,
+          {
+            [styles.myPage_button__disabled]: isLoading,
+          }
+        )}
+      >
+        按钮
+      </button>
+    </div>
+  )
+}
+```
+
+## 📱 移动端适配
+
+### 1. px 自动转 rem
+
+项目已配置 `postcss-pxtorem`，自动将 px 转换为 rem：
+
+- **基准值**：37.5（基于 375px 设计稿）
+- **使用方式**：直接写 px，自动转换
+- **忽略规则**：`:root` 选择器中的 px 不转换
+
+```less
+.myPage {
+  // 开发时写 px
+  padding: 16px; // 自动转为 0.42667rem
+  font-size: 14px; // 自动转为 0.37333rem
+  margin-top: 20px; // 自动转为 0.53333rem
+
+  &_button {
+    height: 44px; // 自动转为 1.17333rem
+    width: 100px; // 自动转为 2.66667rem
+  }
+}
+
+// ✅ 不转换：`:root` 中的值
+:root {
+  --primary-color: #1677ff;
+  --font-size: 14px; // 这里的 px 不会转换
+}
+
+// ✅ 不转换：小于等于 1px 的值
+.myPage_border {
+  border: 1px solid #eee; // 1px 不会转换，保持边框清晰
+}
+```
+
+### 2. 视口配置
+
+在 `index.html` 中已配置：
+
+```html
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+/>
+```
+
+### 3. 安全区域适配（iPhone X 等）
+
+```less
+.myPage {
+  padding-bottom: 20px;
+
+  // 支持安全区域
+  padding-bottom: constant(safe-area-inset-bottom); // iOS 11.0-11.2
+  padding-bottom: env(safe-area-inset-bottom); // iOS 11.2+
+}
+
+.myPage_footer {
+  position: fixed;
+  bottom: 0;
+  padding-bottom: 10px;
+
+  // 加上安全区域高度
+  padding-bottom: calc(10px + constant(safe-area-inset-bottom));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+```
+
+## 🎨 覆盖第三方组件样式
+
+### 1. 使用 :global()
+
+```less
+.myPage {
+  // ✅ 覆盖 antd-mobile 组件样式
+  :global(.adm-button) {
+    height: 48px;
+    border-radius: 8px;
+  }
+
+  :global(.adm-input) {
+    font-size: 16px;
+  }
+
+  // ✅ 限定作用域
+  &_form {
+    :global(.adm-form-item) {
+      margin-bottom: 16px;
+    }
+
+    :global(.adm-form-item-label) {
+      font-size: 14px;
+      font-weight: 500;
+    }
+  }
+}
+```
+
+### 2. 主题定制
+
+```less
+// src/styles/variables.less
+
+// antd-mobile 主题变量
+:root:root {
+  --adm-color-primary: #1677ff;
+  --adm-color-success: #00b578;
+  --adm-color-warning: #ff8f1f;
+  --adm-color-danger: #ff3141;
+
+  --adm-font-size-main: 14px;
+  --adm-border-radius: 8px;
+}
+```
+
+## 📏 样式最佳实践
+
+### 1. 保持简洁
+
+```less
+// ✅ 推荐：清晰的层级
+.myPage {
+  &_header {
+  }
+  &_content {
+  }
+  &_footer {
+  }
+}
+
+// ❌ 不推荐：过深的嵌套
+.myPage {
+  &_header {
+    &_top {
+      &_left {
+        &_icon {
+        } // 嵌套太深
+      }
+    }
+  }
+}
+```
+
+### 2. 避免重复
+
+```less
+// ✅ 推荐：使用 Less 变量和混合
+@button-height: 44px;
+@button-radius: 8px;
+
+.buttonMixin() {
+  height: @button-height;
+  border-radius: @button-radius;
+  font-size: 16px;
+}
+
+.myPage_button {
+  .buttonMixin();
+
+  &__primary {
+    background: #1677ff;
+  }
+
+  &__danger {
+    background: #ff3141;
+  }
+}
+
+// ❌ 不推荐：重复的样式
+.myPage_button {
+  height: 44px;
+  border-radius: 8px;
+  font-size: 16px;
+  background: #1677ff;
+}
+
+.myPage_dangerButton {
+  height: 44px; // 重复
+  border-radius: 8px; // 重复
+  font-size: 16px; // 重复
+  background: #ff3141;
+}
+```
+
+### 3. 使用语义化的命名
+
+```less
+// ✅ 推荐：语义化
+.productCard_price {
+}
+.productCard_discount {
+}
+.productCard_addToCart {
+}
+
+// ❌ 不推荐：不语义化
+.productCard_text1 {
+}
+.productCard_text2 {
+}
+.productCard_btn {
+}
+```
+
+## 🚫 常见错误
+
+### ❌ 错误示例
+
+```less
+// 错误 1: 使用 kebab-case
+.login-page {
+}
+.login-page-header {
+}
+
+// 错误 2: Element 使用双下划线
+.loginPage__header {
+} // 应该用单下划线
+
+// 错误 3: Modifier 使用单下划线
+.loginPage_loading {
+} // 应该用双下划线
+
+// 错误 4: 缺少 Block 前缀
+.header {
+}
+.content {
+}
+.button {
+}
+
+// 错误 5: 过深的嵌套
+.myPage {
+  .header {
+    .top {
+      .left {
+        .icon {
+        } // 太深
+      }
+    }
+  }
+}
+
+// 错误 6: 不使用 CSS Modules
+.myPage {
+} // 文件名应该是 .module.less
+
+// 错误 7: 硬编码值
+.myPage {
+  color: #1677ff; // 应该使用变量
+  padding: 16px;
+  font-size: 14px;
+}
+```
+
+### ✅ 正确示例
+
+```less
+// 正确 1: 使用小驼峰 BEM
+.loginPage {
+}
+.loginPage_header {
+}
+
+// 正确 2: Element 使用单下划线
+.loginPage_header {
+}
+
+// 正确 3: Modifier 使用双下划线
+.loginPage__loading {
+}
+
+// 正确 4: 包含 Block 前缀
+.loginPage_header {
+}
+.loginPage_content {
+}
+.loginPage_button {
+}
+
+// 正确 5: 合理的嵌套
+.myPage {
+  &_header {
+  }
+  &_content {
+  }
+  &_footer {
+  }
+}
+
+// 正确 6: 使用 CSS Modules
+// 文件名: index.module.less
+.myPage {
+}
+
+// 正确 7: 使用变量
+@import '@/styles/variables.less';
+
+.myPage {
+  color: @primary-color;
+  padding: @spacing-base;
+  font-size: @font-size-base;
+}
+```
+
+## 🎯 快速参考
+
+### BEM 命名速查
+
+```less
+// Block
+.myPage {
+}
+
+// Element（单下划线 _）
+.myPage_header {
+}
+.myPage_content {
+}
+.myPage_footer {
+}
+
+// Modifier（双下划线 __）
+.myPage__loading {
+}
+.myPage__active {
+}
+.myPage__disabled {
+}
+
+// Element + Modifier
+.myPage_button__primary {
+}
+.myPage_button__disabled {
+}
+```
+
+### 常用 Less 技巧
+
+```less
+// 变量
+@primary-color: #1677ff;
+@spacing-base: 16px;
+
+// 混合（Mixin）
+.flexCenter() {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// 使用
+.myPage {
+  .flexCenter();
+  color: @primary-color;
+  padding: @spacing-base;
+}
+
+// 嵌套
+.myPage {
+  &_header {
+  }
+
+  &:hover {
+  }
+
+  &__active {
+  }
+}
+```
+
+## 📚 相关文档
+
+- [页面开发规范](mdc:.cursor/rules/page-development.mdc)
+- [全局样式变量](mdc:src/styles/variables.less)
+- [样式重置](mdc:src/styles/reset.less)
+- [详细页面规范文档](mdc:docs/PAGE_GUIDE.md)

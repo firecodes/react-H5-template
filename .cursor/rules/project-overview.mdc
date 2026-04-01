@@ -1,0 +1,177 @@
+---
+alwaysApply: true
+description: H5 Template React 项目概览 - 技术栈、目录结构和开发规范
+---
+
+# H5 Template React 项目概览
+
+这是一个基于 React 18 + TypeScript + Vite + antd-mobile 的移动端 H5 项目模板。
+
+## 🎯 核心技术栈
+
+- **React 18.3.1** - 使用最新的 React 特性（Hooks、并发特性）
+- **TypeScript 5.9.3** - 严格的类型检查，提高代码质量
+- **Vite 7.x** - 极速的开发构建工具
+- **React Router 7.x** - Hash 模式路由（移动端友好）
+- **antd-mobile 5.x** - 专业的移动端 UI 组件库
+- **Zustand 5.x** - 轻量级状态管理（替代 Redux）
+- **ahooks 3.x** - 70+ 个高质量 React Hooks 工具库
+- **Axios** - HTTP 请求库，已封装请求/响应拦截器
+- **Less** - CSS 预处理器，支持 CSS Modules
+- **postcss-pxtorem** - 自动将 px 转换为 rem（基于 375px 设计稿）
+
+## 📁 项目目录结构
+
+```
+src/
+├── services/               # API 接口管理（按业务模块划分）
+│   ├── index.ts           # 统一导出所有 API
+│   └── user/              # 用户模块示例
+│       ├── index.ts       # API 方法定义
+│       └── types.ts       # 类型定义
+│
+├── assets/                 # 静态资源
+│   ├── images/            # 图片资源
+│   ├── icons/             # 图标资源
+│   └── fonts/             # 字体文件
+│
+├── components/             # 公共组件
+│   ├── Common/            # 通用 UI 组件（Loading、Empty 等）
+│   └── Business/          # 业务组件（可在多个页面复用）
+│
+├── constants/              # 常量定义
+│   └── index.ts           # 全局常量统一导出
+│
+├── hooks/                  # 自定义 Hooks
+│   └── index.ts           # 导出 ahooks 和自定义 Hooks
+│
+├── layouts/                # 布局组件
+│   ├── BasicLayout/       # 基础布局（带导航栏）
+│   ├── BlankLayout/       # 空白布局
+│   └── TabLayout/         # 底部 Tab 布局
+│
+├── pages/                  # 页面组件（使用小驼峰命名）
+│   ├── home/              # 首页
+│   ├── login/             # 登录页
+│   ├── about/             # 关于页
+│   ├── user/              # 用户页
+│   └── notFound/          # 404 页面
+│   每个页面包含：
+│   ├── index.tsx          # 页面组件
+│   ├── index.module.less  # 页面样式
+│   └── components/        # 页面私有组件
+│
+├── router/                 # 路由配置
+│   ├── index.tsx          # 路由入口
+│   ├── routes.tsx         # 路由表配置
+│   └── AuthGuard.tsx      # 路由守卫（权限控制）
+│
+├── store/                  # 状态管理（Zustand）
+│   ├── index.ts           # Store 统一导出
+│   └── modules/           # 状态模块
+│       ├── userStore.ts   # 用户状态（登录、用户信息等）
+│       └── appStore.ts    # 应用状态（主题、语言等）
+│
+├── styles/                 # 全局样式
+│   ├── index.less         # 样式入口
+│   ├── variables.less     # Less 变量定义
+│   └── reset.less         # 样式重置
+│
+├── types/                  # TypeScript 类型定义
+│   └── global.d.ts        # 全局类型声明
+│
+├── utils/                  # 工具函数
+│   ├── index.ts           # 工具函数统一导出
+│   ├── request.ts         # HTTP 请求封装（Axios + 拦截器）
+│   ├── storage.ts         # 本地存储工具（支持过期时间）
+│   ├── format.ts          # 格式化工具（手机号、金额、日期等）
+│   └── device.ts          # 设备检测工具（iOS、Android、微信等）
+│
+├── App.tsx                 # 根组件
+└── main.tsx                # 应用入口
+```
+
+## 🔑 关键约定
+
+### 1. 路径别名
+
+使用 `@` 别名指向 `src` 目录，避免相对路径：
+
+```typescript
+import { UserAPI } from '@/services'
+import { useUserStore } from '@/store'
+import { formatPhone } from '@/utils'
+```
+
+### 2. 命名规范
+
+- **组件文件**: PascalCase（例如：`UserCard.tsx`）
+- **工具文件**: camelCase（例如：`useRequest.ts`）
+- **页面目录**: camelCase（例如：`home/`、`productDetail/`）
+- **组件目录**: PascalCase（例如：`Common/`、`Business/`）
+- **常量**: UPPER_SNAKE_CASE（例如：`API_BASE_URL`）
+
+### 3. 样式规范
+
+- 使用 CSS Modules（文件名：`*.module.less`）
+- 遵循 BEM 命名规范：
+  - Block: `loginPage`
+  - Element: `loginPage_header`（使用单下划线 `_`）
+  - Modifier: `loginPage__loading`（使用双下划线 `__`）
+
+### 4. API 接口规范
+
+- 按业务模块划分目录（例如：`services/user/`、`services/product/`）
+- 每个模块包含 `index.ts`（API 方法）和 `types.ts`（类型定义）
+- **类型命名必须使用模块前缀**（例如：`UserInfo`、`UserLoginParams`、`ProductInfo`）
+- 在 `services/index.ts` 中统一导出
+
+### 5. 状态管理
+
+- 使用 Zustand 管理全局状态
+- 按功能模块划分 Store（例如：`userStore`、`appStore`）
+- 只存储真正需要全局共享的状态
+- 支持数据持久化到 localStorage
+
+### 6. Hooks 使用
+
+- 优先使用 ahooks 提供的 Hooks（已有 70+ 个）
+- 自定义 Hooks 必须以 `use` 开头
+- 常用 Hooks：`useRequest`、`useDebounce`、`useLocalStorageState`
+
+### 7. 移动端适配
+
+- 设计稿基准：375px
+- 使用 px 单位开发，自动转换为 rem
+- postcss-pxtorem 配置：rootValue = 37.5
+
+## 📖 参考文档
+
+项目完整文档位于 [docs](mdc:docs) 目录：
+
+- [快速开始指南](mdc:docs/QUICK_START.md) - 5 分钟上手
+- [项目结构指南](mdc:docs/PROJECT_GUIDE.md) - 详细的目录说明
+- [React 开发规范](mdc:docs/REACT_GUIDE.md) - 组件开发规范
+- [API 开发规范](mdc:docs/API_GUIDE.md) - Services 模块规范
+- [页面开发规范](mdc:docs/PAGE_GUIDE.md) - 页面和样式规范
+- [状态管理指南](mdc:docs/ZUSTAND_GUIDE.md) - Zustand 使用指南
+- [代码格式化配置](mdc:docs/FORMAT_CONFIG.md) - Prettier 和 ESLint
+
+## 🔧 开发流程
+
+1. **创建新页面**：在 `src/pages/` 下创建目录（小驼峰命名）
+2. **配置路由**：在 `src/router/routes.tsx` 中添加路由配置
+3. **创建 API**：在 `src/services/` 下创建模块目录和文件
+4. **使用状态管理**：在 `src/store/modules/` 下创建 Store
+5. **编写样式**：使用 CSS Modules 和 BEM 命名规范
+
+## 🎨 代码风格
+
+- **不使用分号**（semi: false）
+- **使用单引号**（singleQuote: true）
+- **每行最大 100 字符**（printWidth: 100）
+- **缩进 2 个空格**（tabWidth: 2）
+- **ES5 兼容的尾随逗号**（trailingComma: 'es5'）
+- **箭头函数单参数不加括号**（arrowParens: 'avoid'）
+
+配置文件：[.prettierrc](mdc:.prettierrc)、[eslint.config.js](mdc:eslint.config.js)

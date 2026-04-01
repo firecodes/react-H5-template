@@ -1,0 +1,599 @@
+---
+globs: src/utils/**/*
+description: 工具函数规范 - 请求封装、存储工具、格式化工具、设备检测
+---
+
+# 工具函数规范
+
+## 📁 目录结构
+
+```
+src/utils/
+├── index.ts           # 工具函数统一导出
+├── request.ts         # HTTP 请求封装（Axios + 拦截器）
+├── storage.ts         # 本地存储工具（支持过期时间）
+├── format.ts          # 格式化工具（手机号、金额、日期等）
+└── device.ts          # 设备检测工具（iOS、Android、微信等）
+```
+
+## 🌐 HTTP 请求工具（request.ts）
+
+### 功能特性
+
+- ✅ 基于 Axios 封装
+- ✅ 请求/响应拦截器
+- ✅ 自动添加 token
+- ✅ 统一错误处理
+- ✅ 401 自动登出
+- ✅ TypeScript 类型支持
+
+### 基本使用
+
+参考文件：[src/utils/request.ts](mdc:src/utils/request.ts)
+
+```typescript
+import { http } from '@/utils/request'
+
+// GET 请求
+const users = await http.get<User[]>('/users')
+const user = await http.get<User>('/users/1')
+
+// POST 请求
+const result = await http.post<UserLoginResponse>('/login', {
+  username: 'admin',
+  password: '123456',
+})
+
+// PUT 请求
+const updated = await http.put<User>('/users/1', {
+  email: 'new@example.com',
+})
+
+// DELETE 请求
+await http.delete<void>('/users/1')
+
+// PATCH 请求
+const patched = await http.patch<User>('/users/1', {
+  phone: '13800138000',
+})
+```
+
+### 带参数的请求
+
+```typescript
+// GET 请求带查询参数
+const users = await http.get<UserListResponse>('/users', {
+  params: {
+    page: 1,
+    pageSize: 10,
+    keyword: 'john',
+  },
+})
+
+// POST 请求带配置
+const result = await http.post<User>('/users', data, {
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 5000,
+})
+```
+
+### 自定义拦截器
+
+```typescript
+// 请求拦截器
+http.interceptors.request.use(
+  config => {
+    // 添加自定义请求头
+    config.headers['X-Custom-Header'] = 'value'
+
+    // 添加时间戳
+    config.params = {
+      ...config.params,
+      _t: Date.now(),
+    }
+
+    return config
+  },
+  error => {
+    return Promise.reject(error)
+  }
+)
+
+// 响应拦截器
+http.interceptors.response.use(
+  response => {
+    // 处理响应数据
+    return response.data
+  },
+  error => {
+    // 统一错误处理
+    if (error.response?.status === 404) {
+      Toast.show({ content: '资源不存在' })
+    }
+    return Promise.reject(error)
+  }
+)
+```
+
+## 💾 本地存储工具（storage.ts）
+
+### 功能特性
+
+- ✅ 支持过期时间
+- ✅ 自动序列化/反序列化
+- ✅ TypeScript 类型支持
+- ✅ 错误处理
+
+### 基本使用
+
+参考文件：[src/utils/storage.ts](mdc:src/utils/storage.ts)
+
+```typescript
+import { storage } from '@/utils'
+
+// 设置存储（永久）
+storage.set('user', { id: 1, name: 'John' })
+
+// 设置存储（带过期时间，单位：秒）
+storage.set('token', 'abc123', 3600)  // 1 小时后过期
+
+// 获取存储
+const user = storage.get<User>('user')
+const token = storage.get<string>('token')
+
+// 删除存储
+storage.remove('token')
+
+// 清空所有存储
+storage.clear()
+
+// 检查是否存在
+const hasToken = storage.has('token')
+```
+
+### 实际应用
+
+```typescript
+// 缓存用户信息（7 天）
+const cacheUserInfo = (userInfo: UserInfo) => {
+  storage.set('userInfo', userInfo, 7 * 24 * 3600)
+}
+
+// 获取缓存的用户信息
+const getCachedUserInfo = (): UserInfo | null => {
+  return storage.get<UserInfo>('userInfo')
+}
+
+// 缓存 API 响应（1 小时）
+const cacheApiResponse = (key: string, data: any) => {
+  storage.set(`api_${key}`, data, 3600)
+}
+
+// 获取缓存的 API 响应
+const getCachedApiResponse = <T>(key: string): T | null => {
+  return storage.get<T>(`api_${key}`)
+}
+```
+
+## 🎨 格式化工具（format.ts）
+
+### 功能特性
+
+- ✅ 手机号格式化
+- ✅ 金额格式化
+- ✅ 日期格式化
+- ✅ 文件大小格式化
+- ✅ 数字格式化
+
+### 基本使用
+
+参考文件：[src/utils/format.ts](mdc:src/utils/format.ts)
+
+```typescript
+import {
+  formatPhone,
+  formatMoney,
+  formatDate,
+  formatFileSize,
+  formatNumber
+} from '@/utils'
+
+// 格式化手机号
+formatPhone('13800138000')           // => '138****8000'
+formatPhone('13800138000', ' ')      // => '138 0013 8000'
+
+// 格式化金额
+formatMoney(1234.5)                  // => '¥1,234.50'
+formatMoney(1234.5, 0)               // => '¥1,235'
+formatMoney(1234.5, 2, '$')          // => '$1,234.50'
+
+// 格式化日期
+formatDate(Date.now())               // => '2024-01-01 12:00:00'
+formatDate(Date.now(), 'YYYY-MM-DD') // => '2024-01-01'
+formatDate(Date.now(), 'HH:mm:ss')   // => '12:00:00'
+
+// 格式化文件大小
+formatFileSize(1024)                 // => '1.00 KB'
+formatFileSize(1024 * 1024)          // => '1.00 MB'
+formatFileSize(1024 * 1024 * 1024)   // => '1.00 GB'
+
+// 格式化数字
+formatNumber(1234567)                // => '1,234,567'
+formatNumber(1234567.89, 2)          // => '1,234,567.89'
+```
+
+### 实际应用
+
+```typescript
+// 在组件中使用
+const UserCard: FC<{ user: User }> = ({ user }) => {
+  return (
+    <div>
+      <p>手机号：{formatPhone(user.phone)}</p>
+      <p>余额：{formatMoney(user.balance)}</p>
+      <p>注册时间：{formatDate(user.createdAt)}</p>
+    </div>
+  )
+}
+
+// 在列表中使用
+const ProductList: FC<{ products: Product[] }> = ({ products }) => {
+  return (
+    <div>
+      {products.map(product => (
+        <div key={product.id}>
+          <span>{product.name}</span>
+          <span>{formatMoney(product.price)}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+## 📱 设备检测工具（device.ts）
+
+### 功能特性
+
+- ✅ iOS/Android 检测
+- ✅ 微信/支付宝检测
+- ✅ 浏览器类型检测
+- ✅ 移动端/PC 端检测
+
+### 基本使用
+
+参考文件：[src/utils/device.ts](mdc:src/utils/device.ts)
+
+```typescript
+import {
+  isIOS,
+  isAndroid,
+  isWeChat,
+  isAlipay,
+  isMobile,
+  getBrowser
+} from '@/utils'
+
+// 检测操作系统
+if (isIOS()) {
+  console.log('iOS 设备')
+}
+
+if (isAndroid()) {
+  console.log('Android 设备')
+}
+
+// 检测应用环境
+if (isWeChat()) {
+  console.log('微信环境')
+  // 调用微信 JSSDK
+}
+
+if (isAlipay()) {
+  console.log('支付宝环境')
+  // 调用支付宝 JSSDK
+}
+
+// 检测设备类型
+if (isMobile()) {
+  console.log('移动端设备')
+} else {
+  console.log('PC 端设备')
+}
+
+// 获取浏览器类型
+const browser = getBrowser()
+console.log(browser) // 'chrome', 'safari', 'firefox', etc.
+```
+
+### 实际应用
+
+```typescript
+// 根据环境加载不同的分享功能
+const ShareButton: FC = () => {
+  const handleShare = () => {
+    if (isWeChat()) {
+      // 微信分享
+      wx.updateAppMessageShareData({ ... })
+    } else if (isAlipay()) {
+      // 支付宝分享
+      ap.share({ ... })
+    } else {
+      // 使用 Web Share API
+      navigator.share({ ... })
+    }
+  }
+
+  return <button onClick={handleShare}>分享</button>
+}
+
+// 根据设备显示不同的下载提示
+const DownloadTip: FC = () => {
+  if (isIOS()) {
+    return <div>在 App Store 下载</div>
+  }
+
+  if (isAndroid()) {
+    return <div>在应用市场下载</div>
+  }
+
+  return null
+}
+```
+
+## 📝 创建新工具函数
+
+### 1. 函数设计原则
+
+```typescript
+// ✅ 推荐：纯函数，无副作用
+export const formatPhone = (phone: string): string => {
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+
+// ❌ 不推荐：有副作用的函数
+let lastPhone = ''
+export const formatPhone = (phone: string): string => {
+  lastPhone = phone  // 修改外部变量
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+```
+
+### 2. 完整的类型定义
+
+```typescript
+// ✅ 推荐：完整的类型定义
+export const formatMoney = (
+  amount: number,
+  decimals: number = 2,
+  symbol: string = '¥'
+): string => {
+  const formatted = amount.toFixed(decimals)
+  const parts = formatted.split('.')
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return `${symbol}${parts.join('.')}`
+}
+
+// ❌ 不推荐：缺少类型定义或使用 any
+export const formatMoney = (amount: any, decimals?: any, symbol?: any) => {
+  // ...
+}
+```
+
+### 3. 添加 JSDoc 注释
+
+```typescript
+/**
+ * 格式化手机号，中间四位显示为星号
+ *
+ * @param phone - 原始手机号（11 位）
+ * @param separator - 分隔符（可选）
+ * @returns 格式化后的手机号
+ * @example
+ * ```ts
+ * formatPhone('13800138000')      // => '138****8000'
+ * formatPhone('13800138000', ' ') // => '138 0013 8000'
+ * ```
+ */
+export const formatPhone = (
+  phone: string,
+  separator?: string
+): string => {
+  if (separator) {
+    return phone.replace(/(\d{3})(\d{4})(\d{4})/, `$1${separator}$2${separator}$3`)
+  }
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+```
+
+### 4. 错误处理
+
+```typescript
+// ✅ 推荐：完善的错误处理
+export const parseJSON = <T>(str: string, defaultValue?: T): T | null => {
+  try {
+    return JSON.parse(str) as T
+  } catch (error) {
+    console.error('JSON 解析失败:', error)
+    return defaultValue ?? null
+  }
+}
+
+// ❌ 不推荐：没有错误处理
+export const parseJSON = <T>(str: string): T => {
+  return JSON.parse(str) as T  // 可能抛出异常
+}
+```
+
+### 5. 单元测试
+
+```typescript
+// ✅ 推荐：编写单元测试
+describe('formatPhone', () => {
+  it('应该格式化手机号', () => {
+    expect(formatPhone('13800138000')).toBe('138****8000')
+  })
+
+  it('应该支持自定义分隔符', () => {
+    expect(formatPhone('13800138000', ' ')).toBe('138 0013 8000')
+  })
+
+  it('应该处理空字符串', () => {
+    expect(formatPhone('')).toBe('')
+  })
+})
+```
+
+## 🎯 最佳实践
+
+### 1. 工具函数导出
+
+```typescript
+// src/utils/index.ts
+
+// ✅ 推荐：统一导出
+export * from './request'
+export * from './storage'
+export * from './format'
+export * from './device'
+
+// 这样可以从 @/utils 统一导入
+import { http, storage, formatPhone, isIOS } from '@/utils'
+```
+
+### 2. 避免循环依赖
+
+```typescript
+// ❌ 错误：循环依赖
+// utils/a.ts
+import { funcB } from './b'
+
+// utils/b.ts
+import { funcA } from './a'  // 循环依赖！
+
+// ✅ 正确：提取共同依赖
+// utils/common.ts
+export const sharedFunc = () => {}
+
+// utils/a.ts
+import { sharedFunc } from './common'
+
+// utils/b.ts
+import { sharedFunc } from './common'
+```
+
+### 3. 保持函数简洁
+
+```typescript
+// ✅ 推荐：单一职责
+export const formatPhone = (phone: string): string => {
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+
+export const validatePhone = (phone: string): boolean => {
+  return /^1[3-9]\d{9}$/.test(phone)
+}
+
+// ❌ 不推荐：函数过于复杂
+export const handlePhone = (phone: string, action: 'format' | 'validate') => {
+  if (action === 'format') {
+    return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+  } else if (action === 'validate') {
+    return /^1[3-9]\d{9}$/.test(phone)
+  }
+}
+```
+
+### 4. 使用 Tree-shaking
+
+```typescript
+// ✅ 推荐：导出具名函数
+export const formatPhone = () => {}
+export const formatMoney = () => {}
+
+// ❌ 不推荐：导出对象（不利于 Tree-shaking）
+export default {
+  formatPhone: () => {},
+  formatMoney: () => {},
+}
+```
+
+## 🚫 常见错误
+
+```typescript
+// ❌ 错误 1: 修改参数
+export const updateUser = (user: User) => {
+  user.updatedAt = Date.now()  // 直接修改参数
+  return user
+}
+
+// ✅ 正确：返回新对象
+export const updateUser = (user: User) => {
+  return {
+    ...user,
+    updatedAt: Date.now(),
+  }
+}
+
+// ❌ 错误 2: 使用全局变量
+let cache = {}
+export const getCache = (key: string) => {
+  return cache[key]
+}
+
+// ✅ 正确：避免全局状态
+export const createCache = () => {
+  const cache = {}
+  return {
+    get: (key: string) => cache[key],
+    set: (key: string, value: any) => cache[key] = value,
+  }
+}
+
+// ❌ 错误 3: 缺少类型定义
+export const formatDate = (date) => {
+  return new Date(date).toISOString()
+}
+
+// ✅ 正确：完整的类型定义
+export const formatDate = (date: Date | number | string): string => {
+  return new Date(date).toISOString()
+}
+
+// ❌ 错误 4: 没有错误处理
+export const parseJSON = (str: string) => {
+  return JSON.parse(str)  // 可能抛出异常
+}
+
+// ✅ 正确：添加错误处理
+export const parseJSON = <T>(str: string): T | null => {
+  try {
+    return JSON.parse(str) as T
+  } catch (error) {
+    console.error('JSON 解析失败:', error)
+    return null
+  }
+}
+```
+
+## 📚 相关文档
+
+- [HTTP 请求工具](mdc:src/utils/request.ts)
+- [存储工具](mdc:src/utils/storage.ts)
+- [格式化工具](mdc:src/utils/format.ts)
+- [设备检测工具](mdc:src/utils/device.ts)
+- [项目结构指南](mdc:docs/PROJECT_GUIDE.md)
+
+## 🎯 工具函数检查清单
+
+- [ ] 函数是纯函数，无副作用
+- [ ] 完整的 TypeScript 类型定义
+- [ ] 添加 JSDoc 注释
+- [ ] 包含使用示例
+- [ ] 添加错误处理
+- [ ] 编写单元测试
+- [ ] 函数保持简洁（不超过 50 行）
+- [ ] 避免使用 any 类型
+- [ ] 在 utils/index.ts 中导出

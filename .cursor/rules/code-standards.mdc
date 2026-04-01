@@ -1,0 +1,417 @@
+---
+alwaysApply: true
+description: 代码规范 - 命名规范、导入顺序、TypeScript 使用规范
+---
+
+# 代码规范
+
+## 📝 命名规范
+
+### 1. 文件和目录命名
+
+```typescript
+// ✅ 正确
+src /
+  pages /
+  home / // 页面目录：小驼峰
+  src /
+  pages /
+  productDetail / // 多单词页面：小驼峰
+  src /
+  components /
+  Common /
+  UserCard.tsx // 组件文件：PascalCase
+src / utils / formatPhone.ts // 工具文件：camelCase
+src / hooks / useUserInfo.ts // Hook 文件：camelCase，use 开头
+src / services / user / index.ts // API 目录：小驼峰
+
+// ❌ 错误
+src /
+  pages /
+  Home / // 页面目录不使用 PascalCase
+  src /
+  pages /
+  product -
+  detail / // 不使用 kebab-case
+    src /
+    components /
+    Common /
+    userCard.tsx // 组件文件不使用 camelCase
+src / utils / FormatPhone.ts // 工具文件不使用 PascalCase
+```
+
+### 2. 变量命名
+
+```typescript
+// ✅ 正确：使用 camelCase
+const userName = 'John'
+const isLoading = false
+const hasPermission = true
+const itemCount = 10
+
+// ❌ 错误
+const UserName = 'John' // 不使用 PascalCase
+const is_loading = false // 不使用 snake_case
+const ITEM_COUNT = 10 // 变量不使用全大写（常量才用）
+```
+
+### 3. 常量命名
+
+```typescript
+// ✅ 正确：使用 UPPER_SNAKE_CASE
+const API_BASE_URL = 'https://api.example.com'
+const MAX_RETRY_COUNT = 3
+const DEFAULT_PAGE_SIZE = 10
+
+// 枚举
+enum UserStatus {
+  Active = 'active',
+  Inactive = 'inactive',
+  Banned = 'banned',
+}
+
+// ❌ 错误
+const apiBaseUrl = 'https://api.example.com' // 常量应该全大写
+const maxRetryCount = 3 // 常量应该全大写
+```
+
+### 4. 函数命名
+
+```typescript
+// ✅ 正确：使用动词开头的 camelCase
+const getUserInfo = () => {}
+const handleClick = () => {}
+const fetchDataList = () => {}
+const validateForm = () => {}
+const isValidEmail = (email: string) => boolean
+const hasPermission = (role: string) => boolean
+
+// ❌ 错误
+const user = () => {} // 不清晰，缺少动词
+const click = () => {} // 事件处理应该有 handle 前缀
+const data = () => {} // 不是动词
+const GetUserInfo = () => {} // 不使用 PascalCase
+```
+
+### 5. 组件命名
+
+```typescript
+// ✅ 正确：使用 PascalCase
+const UserCard: FC = () => {}
+const ProductList: FC = () => {}
+const OrderDetailModal: FC = () => {}
+
+// ❌ 错误
+const userCard: FC = () => {} // 组件必须使用 PascalCase
+const productList: FC = () => {} // 组件必须使用 PascalCase
+const order_detail_modal: FC = () => {} // 不使用 snake_case
+```
+
+### 6. 事件处理函数命名
+
+```typescript
+// ✅ 正确：组件内使用 handle 前缀
+const handleClick = () => {}
+const handleSubmit = () => {}
+const handleChange = () => {}
+const handleUserSelect = (user: User) => {}
+
+// ✅ 正确：Props 中的回调使用 on 前缀
+interface ComponentProps {
+  onClick?: () => void
+  onSubmit?: (data: FormData) => void
+  onChange?: (value: string) => void
+  onUserSelect?: (user: User) => void
+}
+
+// ❌ 错误
+const click = () => {} // 缺少 handle 前缀
+const onUserClick = () => {} // 组件内部不使用 on 前缀
+```
+
+## 📦 导入顺序
+
+```typescript
+// ✅ 正确：按照规定的顺序导入
+// 1. React 相关（第三方库）
+import { FC, useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+// 2. UI 组件库
+import { Button, Toast, Dialog } from 'antd-mobile'
+
+// 3. 其他第三方库
+import classNames from 'classnames'
+import axios from 'axios'
+
+// 4. 项目内部模块（使用 @ 别名）
+import { useRequest, useDebounce } from '@/hooks'
+import { UserAPI, ProductAPI } from '@/services'
+import { useUserStore } from '@/store'
+import { formatPhone, storage } from '@/utils'
+
+// 5. 类型导入（使用 type 关键字）
+import type { User, UserInfo } from '@/services'
+
+// 6. 相对路径导入（组件内部的子组件、样式等）
+import UserInfo from './components/UserInfo'
+import styles from './index.module.less'
+
+// ❌ 错误：无序导入
+import styles from './index.module.less'
+import { Button } from 'antd-mobile'
+import { useState } from 'react'
+import { UserAPI } from '@/services'
+```
+
+## 🎯 TypeScript 规范
+
+### 1. 类型定义
+
+```typescript
+// ✅ 正确：对象类型使用 interface
+interface User {
+  id: number
+  name: string
+  email: string
+}
+
+// ✅ 正确：联合类型、交叉类型使用 type
+type Status = 'pending' | 'success' | 'error'
+type UserWithRole = User & { role: string }
+
+// ✅ 正确：函数类型使用 type
+type EventHandler = (event: Event) => void
+
+// ❌ 错误：使用 any
+const handleData = (data: any) => {} // 失去类型安全
+
+// ✅ 正确：使用具体类型
+const handleData = (data: User) => {}
+```
+
+### 2. 避免使用 any
+
+```typescript
+// ❌ 错误
+const fetchData = async (): Promise<any> => {}
+const handleResponse = (res: any) => {}
+
+// ✅ 正确：使用具体类型
+const fetchData = async (): Promise<User[]> => {}
+const handleResponse = (res: ApiResponse<User>) => {}
+
+// ✅ 正确：使用泛型
+const fetchData = async <T>(): Promise<T> => {}
+
+// ✅ 正确：使用 unknown（需要类型检查）
+const handleData = (data: unknown) => {
+  if (typeof data === 'object' && data !== null) {
+    // 类型收窄后使用
+  }
+}
+```
+
+### 3. 类型导入
+
+```typescript
+// ✅ 正确：使用 type 关键字导入类型
+import type { User, UserListParams } from '@/services'
+import type { FC, ReactNode } from 'react'
+
+// ✅ 正确：混合导入
+import { UserAPI, type User } from '@/services'
+
+// ❌ 错误：类型和值混合导入
+import { UserAPI, User } from '@/services'
+```
+
+### 4. Props 类型定义
+
+```typescript
+// ✅ 正确：完整的 Props 类型定义
+interface ButtonProps {
+  /** 按钮类型 */
+  type?: 'primary' | 'default' | 'danger'
+  /** 按钮大小 */
+  size?: 'small' | 'medium' | 'large'
+  /** 是否禁用 */
+  disabled?: boolean
+  /** 按钮内容 */
+  children: ReactNode
+  /** 点击事件 */
+  onClick?: () => void
+}
+
+const Button: FC<ButtonProps> = ({
+  type = 'default',
+  size = 'medium',
+  disabled = false,
+  children,
+  onClick,
+}) => {
+  // ...
+}
+
+// ❌ 错误：使用 any 或缺少类型定义
+interface ButtonProps {
+  type?: any
+  onClick?: any
+}
+```
+
+## 💡 注释规范
+
+### 1. 组件注释
+
+````typescript
+/**
+ * 用户卡片组件
+ *
+ * @description 展示用户基本信息，支持头像、姓名、邮箱等
+ * @example
+ * ```tsx
+ * <UserCard userId={1} showActions />
+ * ```
+ */
+const UserCard: FC<UserCardProps> = props => {
+  // ...
+}
+````
+
+### 2. 函数注释
+
+````typescript
+/**
+ * 格式化手机号
+ *
+ * @param phone - 原始手机号
+ * @returns 格式化后的手机号 (138****8000)
+ * @example
+ * ```ts
+ * formatPhone('13800138000') // => '138****8000'
+ * ```
+ */
+export const formatPhone = (phone: string): string => {
+  return phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')
+}
+````
+
+### 3. 行内注释
+
+```typescript
+// ✅ 正确：解释为什么这样做
+// 使用 setTimeout 确保在 DOM 更新后执行
+setTimeout(() => {
+  scrollToBottom()
+}, 0)
+
+// 避免在 iOS 上出现滚动问题
+element.style.webkitOverflowScrolling = 'touch'
+
+// ❌ 错误：注释说明代码在做什么（代码本身已经很清楚）
+// 设置 count 为 0
+setCount(0)
+
+// 调用 getUserInfo 函数
+getUserInfo()
+```
+
+## 🔧 代码格式
+
+### 1. 使用 Prettier 自动格式化
+
+项目已配置 Prettier，保存时自动格式化。配置详见 [.prettierrc](mdc:.prettierrc)
+
+```json
+{
+  "semi": false, // 不使用分号
+  "singleQuote": true, // 使用单引号
+  "printWidth": 100, // 每行最大 100 字符
+  "tabWidth": 2, // 缩进 2 个空格
+  "trailingComma": "es5", // ES5 兼容的尾随逗号
+  "arrowParens": "avoid" // 箭头函数单参数不加括号
+}
+```
+
+### 2. 代码示例
+
+```typescript
+// ✅ 正确：符合 Prettier 规范
+const user = {
+  id: 1,
+  name: 'John',
+  email: 'john@example.com',
+}
+
+const handleClick = () => {
+  console.log('clicked')
+}
+
+const fetchUser = async (id: number) => {
+  const data = await UserAPI.getUserInfo(id)
+  return data
+}
+
+// ❌ 错误：不符合规范
+const user = { id: 1, name: 'John', email: 'john@example.com' }
+const handleClick = () => {
+  console.log('clicked')
+}
+```
+
+## 📋 ESLint 规则
+
+项目使用 ESLint 进行代码检查，配置详见 [eslint.config.js](mdc:eslint.config.js)
+
+### 主要规则：
+
+- ⚠️ **警告 console.log**（允许 console.warn 和 console.error）
+- ⚠️ **警告未使用的变量**（以 `_` 开头的变量除外）
+- ⚠️ **警告使用 any 类型**
+- ✅ **强制使用 const**（不可变的值）
+- ✅ **禁止使用 var**（使用 let 或 const）
+- ✅ **React Hooks 规则**（检查 Hooks 使用是否正确）
+
+### 示例：
+
+```typescript
+// ✅ 正确
+const API_URL = 'https://api.example.com'
+let count = 0
+
+const handleClick = () => {
+  console.warn('Button clicked') // console.warn 允许
+}
+
+const unusedFunction = (_param: string) => {
+  // 以 _ 开头的参数不会警告
+}
+
+// ❌ 错误
+var API_URL = 'https://api.example.com' // 不使用 var
+let count = 0
+count = 1 // 应该用 const
+
+const handleClick = () => {
+  console.log('Button clicked') // 警告：不推荐使用 console.log
+}
+
+const fetchData = (data: any) => {} // 警告：不使用 any
+```
+
+## 🎯 最佳实践
+
+1. **始终使用 TypeScript**：不使用 any，充分利用类型系统
+2. **保持代码简洁**：单个函数不超过 50 行，单个文件不超过 300 行
+3. **使用 ESLint 和 Prettier**：保存时自动格式化和修复错误
+4. **遵循命名规范**：让代码自解释，减少注释需求
+5. **合理使用注释**：解释"为什么"而不是"做什么"
+6. **导入顺序**：按照规定顺序组织导入语句
+7. **类型安全**：所有函数参数和返回值都有类型定义
+
+## 📚 相关文档
+
+- [React 开发规范](mdc:docs/REACT_GUIDE.md)
+- [代码格式化配置](mdc:docs/FORMAT_CONFIG.md)
+- [项目结构指南](mdc:docs/PROJECT_GUIDE.md)

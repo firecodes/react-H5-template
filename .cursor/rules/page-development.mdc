@@ -1,0 +1,579 @@
+---
+globs: src/pages/**/*
+description: 页面开发规范 - 页面目录命名、必需文件结构、BEM 样式规范、路由配置
+---
+
+# 页面开发规范
+
+## 📁 页面目录结构
+
+### 目录命名规则
+
+**页面目录必须使用小驼峰命名（camelCase）**
+
+```
+src/pages/
+├── home/                    # ✅ 单个单词：小驼峰
+├── login/                   # ✅ 单个单词：小驼峰
+├── about/                   # ✅ 单个单词：小驼峰
+├── user/                    # ✅ 单个单词：小驼峰
+├── productDetail/           # ✅ 多单词：小驼峰
+├── orderList/               # ✅ 多单词：小驼峰
+└── userProfile/             # ✅ 多单词：小驼峰
+```
+
+### ❌ 错误的命名
+
+```
+src/pages/
+├── Home/                    # ❌ 不使用 PascalCase
+├── Login/                   # ❌ 不使用 PascalCase
+├── ProductDetail/           # ❌ 不使用 PascalCase
+├── product-detail/          # ❌ 不使用 kebab-case
+└── order_list/              # ❌ 不使用 snake_case
+```
+
+## 📄 必需文件结构
+
+每个页面目录必须包含：
+
+```
+pages/myPage/
+├── index.tsx              # 页面组件（必需）
+├── index.module.less      # 页面样式（必需）
+└── components/            # 页面私有组件目录（必需，即使为空）
+    └── MyComponent/
+        ├── index.tsx
+        └── index.module.less
+```
+
+### index.tsx - 页面组件
+
+```typescript
+import { FC, useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button, Card, Toast } from 'antd-mobile'
+import { useRequest } from '@/hooks'
+import { UserAPI } from '@/services'
+import styles from './index.module.less'
+
+const MyPage: FC = () => {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+
+  const handleClick = () => {
+    navigate('/other-page')
+  }
+
+  return (
+    <div className={styles.myPage}>
+      <Card title="我的页面" className={styles.myPage_card}>
+        <p className={styles.myPage_content}>页面内容</p>
+        <Button
+          color="primary"
+          onClick={handleClick}
+          className={styles.myPage_button}
+        >
+          按钮
+        </Button>
+      </Card>
+    </div>
+  )
+}
+
+export default MyPage
+```
+
+### index.module.less - 页面样式
+
+遵循 BEM 命名规范（详见样式规范部分）：
+
+```less
+// Block: myPage
+.myPage {
+  padding: 16px;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+
+  // Element: myPage_card（使用单下划线 _）
+  &_card {
+    margin-bottom: 16px;
+    border-radius: 8px;
+  }
+
+  // Element: myPage_content
+  &_content {
+    font-size: 14px;
+    color: #333;
+  }
+
+  // Element: myPage_button
+  &_button {
+    margin-top: 16px;
+
+    // Modifier: myPage_button__primary（使用双下划线 __）
+    &__primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+  }
+}
+
+// Modifier: myPage__loading（使用双下划线 __）
+.myPage__loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+```
+
+## 🎨 BEM 样式命名规范
+
+### BEM 命名结构
+
+```
+Block_Element__Modifier
+```
+
+### 组成部分
+
+1. **Block（块）**：独立的组件，如 `loginPage`、`homePage`
+2. **Element（元素）**：Block 的组成部分，使用**单下划线 `_`** 连接
+3. **Modifier（修饰符）**：Block 或 Element 的变体，使用**双下划线 `__`** 连接
+
+### 命名规则详解
+
+#### Block 命名
+
+- 第一个单词小写，后续单词首字母大写（小驼峰）
+- 页面 Block 建议使用 `页面名 + Page` 格式
+
+```less
+// ✅ 正确
+.loginPage {
+}
+.homePage {
+}
+.userCard {
+}
+.productList {
+}
+
+// ❌ 错误
+.LoginPage {
+} // 不使用 PascalCase
+.login-page {
+} // 不使用 kebab-case
+.login_page {
+} // 不使用 snake_case
+```
+
+#### Element 命名
+
+- Block 名称 + **单下划线 `_`** + 元素名称（小驼峰）
+
+```less
+// ✅ 正确
+.loginPage_header {
+}
+.loginPage_submitButton {
+}
+.userCard_avatar {
+}
+.productList_item {
+}
+
+// ❌ 错误
+.loginPage-header {
+} // 使用 `-`
+.loginPage__header {
+} // 使用 `__`（这是 Modifier）
+.header {
+} // 缺少 Block 前缀
+```
+
+#### Modifier 命名
+
+- Block/Element 名称 + **双下划线 `__`** + 修饰符名称（小驼峰）
+
+```less
+// ✅ 正确：Block 的 Modifier
+.loginPage__loading {
+}
+.loginPage__disabled {
+}
+.userCard__active {
+}
+
+// ✅ 正确：Element 的 Modifier
+.loginPage_button__primary {
+}
+.loginPage_button__disabled {
+}
+.userCard_title__large {
+}
+
+// ❌ 错误
+.loginPage-loading {
+} // 使用 `-`
+.loginPage--loading {
+} // 使用 `--`（已禁止）
+.loginPage_loading {
+} // 使用单下划线（这是 Element）
+```
+
+### 命名对照表
+
+| 类型               | 连接符          | 示例                        | 说明                    |
+| ------------------ | --------------- | --------------------------- | ----------------------- |
+| Block              | 无              | `loginPage`                 | 独立的组件或页面        |
+| Element            | `_` (单下划线)  | `loginPage_header`          | Block 的组成部分        |
+| Modifier           | `__` (双下划线) | `loginPage__loading`        | Block 或 Element 的变体 |
+| Element + Modifier | `_` + `__`      | `loginPage_button__primary` | Element 的修饰符        |
+
+## 💡 完整页面示例
+
+### 登录页面示例
+
+```typescript
+// src/pages/login/index.tsx
+import { FC, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button, Input, Form, Toast } from 'antd-mobile'
+import { UserAPI } from '@/services'
+import { useUserStore } from '@/store'
+import styles from './index.module.less'
+
+const Login: FC = () => {
+  const navigate = useNavigate()
+  const { login } = useUserStore()
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (values: { username: string; password: string }) => {
+    setLoading(true)
+    try {
+      const res = await UserAPI.login(values)
+      login(res.token, res.userInfo)
+      Toast.show({ content: '登录成功' })
+      navigate('/')
+    } catch (error) {
+      Toast.show({ content: '登录失败' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className={styles.loginPage}>
+      <div className={styles.loginPage_content}>
+        <div className={styles.loginPage_logoSection}>
+          <div className={styles.loginPage_logo}>🔐</div>
+          <h1 className={styles.loginPage_title}>欢迎登录</h1>
+        </div>
+
+        <Form
+          onFinish={handleSubmit}
+          className={styles.loginPage_form}
+        >
+          <Form.Item name="username" label="用户名">
+            <Input placeholder="请输入用户名" />
+          </Form.Item>
+
+          <Form.Item name="password" label="密码">
+            <Input type="password" placeholder="请输入密码" />
+          </Form.Item>
+
+          <Button
+            type="submit"
+            color="primary"
+            block
+            loading={loading}
+            className={`${styles.loginPage_submitButton} ${loading ? styles.loginPage_submitButton__loading : ''}`}
+          >
+            登录
+          </Button>
+        </Form>
+      </div>
+    </div>
+  )
+}
+
+export default Login
+```
+
+```less
+// src/pages/login/index.module.less
+
+// Block: loginPage
+.loginPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  // Element: loginPage_content
+  &_content {
+    width: 100%;
+    max-width: 400px;
+    padding: 32px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  // Element: loginPage_logoSection
+  &_logoSection {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  // Element: loginPage_logo
+  &_logo {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 16px;
+    font-size: 40px;
+    line-height: 80px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  }
+
+  // Element: loginPage_title
+  &_title {
+    font-size: 24px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  // Element: loginPage_form
+  &_form {
+    margin-top: 24px;
+  }
+
+  // Element: loginPage_submitButton
+  &_submitButton {
+    height: 48px;
+    margin-top: 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+
+    // Modifier: loginPage_submitButton__loading
+    &__loading {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// Modifier: loginPage__disabled
+.loginPage__disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+```
+
+## 🛣️ 路由配置
+
+在 `src/router/routes.tsx` 中配置路由：
+
+```typescript
+import { lazy } from 'react'
+import type { RouteObject } from 'react-router-dom'
+
+// 导入页面组件
+import Home from '@/pages/home'
+import Login from '@/pages/login'
+
+// 或使用懒加载
+const About = lazy(() => import('@/pages/about'))
+const User = lazy(() => import('@/pages/user'))
+
+export interface RouteConfig extends RouteObject {
+  meta?: {
+    title?: string
+    requiresAuth?: boolean
+  }
+}
+
+export const routes: RouteConfig[] = [
+  {
+    path: '/',
+    element: <Home />,
+    meta: {
+      title: '首页',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/login',
+    element: <Login />,
+    meta: {
+      title: '登录',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/about',
+    element: <About />,
+    meta: {
+      title: '关于',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/user',
+    element: <User />,
+    meta: {
+      title: '用户中心',
+      requiresAuth: true,  // 需要登录
+    },
+  },
+]
+```
+
+## 📝 创建新页面检查清单
+
+- [ ] 目录名使用小驼峰命名（camelCase）
+- [ ] 包含 `index.tsx` 文件
+- [ ] 包含 `index.module.less` 文件
+- [ ] 创建 `components/` 目录（即使为空）
+- [ ] 样式遵循 BEM 命名规范
+  - [ ] Block 使用小驼峰
+  - [ ] Element 使用单下划线 `_`
+  - [ ] Modifier 使用双下划线 `__`
+- [ ] 在 `src/router/routes.tsx` 中添加路由配置
+- [ ] 组件名使用 PascalCase（如 `ProductDetail`）
+- [ ] 导出使用 `export default`
+
+## 🎯 最佳实践
+
+### 1. 组件放置原则
+
+```
+// ✅ 页面私有组件：放在 pages/xxx/components/ 下
+src/pages/home/components/Banner/
+
+// ✅ 全局公共组件：放在 src/components/ 下
+src/components/Common/Loading/
+src/components/Business/UserCard/
+
+// ✅ 判断标准：如果多个页面使用，提升到 src/components/
+```
+
+### 2. 页面组件职责
+
+- ✅ 组织页面结构
+- ✅ 协调子组件
+- ✅ 处理页面级状态
+- ✅ 调用 API 获取数据
+- ✅ 处理路由跳转
+
+### 3. 保持组件简洁
+
+- 单个页面组件不超过 300 行
+- 复杂逻辑提取到自定义 Hooks
+- 复杂 UI 提取为子组件
+
+### 4. 样式组织
+
+```less
+// ✅ 推荐：使用 LESS 嵌套，但保持 BEM 命名
+.myPage {
+  // Block 样式
+
+  &_header {
+    // Element 样式
+
+    &__large {
+      // Modifier 样式
+    }
+  }
+
+  &_content {
+    // Element 样式
+  }
+}
+
+// ✅ 使用全局变量
+@import '@/styles/variables.less';
+
+.myPage {
+  color: @primary-color;
+  padding: @spacing-base;
+}
+```
+
+## 🚫 常见错误
+
+### ❌ 错误示例
+
+```
+// 错误 1: 页面目录使用 PascalCase
+src/pages/Home/
+src/pages/ProductDetail/
+
+// 错误 2: 样式使用 kebab-case
+.login-page { }
+.login-page-header { }
+
+// 错误 3: Element 使用双下划线
+.loginPage__header { }  // 应该用单下划线
+
+// 错误 4: Modifier 使用单下划线
+.loginPage_loading { }  // 应该用双下划线
+
+// 错误 5: 缺少 Block 前缀
+.header { }
+.content { }
+
+// 错误 6: 缺少必需文件
+pages/myPage/
+├── index.tsx           # 只有组件文件
+└── (缺少 index.module.less 和 components/ 目录)
+```
+
+### ✅ 正确示例
+
+```
+// 正确 1: 页面目录使用小驼峰
+src/pages/home/
+src/pages/productDetail/
+
+// 正确 2: 样式使用 BEM 小驼峰
+.loginPage { }
+.loginPage_header { }
+
+// 正确 3: Element 使用单下划线
+.loginPage_header { }
+
+// 正确 4: Modifier 使用双下划线
+.loginPage__loading { }
+
+// 正确 5: 包含 Block 前缀
+.loginPage_header { }
+.loginPage_content { }
+
+// 正确 6: 完整的文件结构
+pages/myPage/
+├── index.tsx
+├── index.module.less
+└── components/
+```
+
+## 🎯 快速记忆口诀
+
+- **页面目录**：小驼峰 camelCase
+- **Block**：独立存在，无连接符
+- **Element**：单下划线 `_`，是 Block 的一部分
+- **Modifier**：双下划线 `__`，表示变体或状态
+- **禁止**：不使用 `--`，统一使用 `__`
+
+## 📚 相关文档
+
+- [页面开发规范详细文档](mdc:docs/PAGE_GUIDE.md)
+- [快速开始指南](mdc:docs/QUICK_START.md)
+- [样式规范](mdc:.cursor/rules/style-guidelines.mdc)
+- [React 开发规范](mdc:.cursor/rules/react-development.mdc)

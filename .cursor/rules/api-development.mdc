@@ -1,0 +1,520 @@
+---
+globs: src/services/**/*
+description: API 开发规范 - Services 目录结构、类型命名规范、API 方法定义
+---
+
+# API 开发规范
+
+## 📁 目录结构
+
+Services 模块按业务模块划分，每个模块包含 API 方法定义和类型定义：
+
+```
+src/services/
+├── index.ts              # 统一导出所有 API 和类型
+├── user/                 # 用户模块
+│   ├── index.ts         # API 方法定义
+│   └── types.ts         # 类型定义
+├── product/             # 产品模块
+│   ├── index.ts
+│   └── types.ts
+└── order/               # 订单模块
+    ├── index.ts
+    └── types.ts
+```
+
+## 🏷️ 类型命名规范
+
+### 核心规则：使用模块前缀命名
+
+**所有类型必须使用模块前缀命名，避免不同模块间的类型重复和命名冲突。**
+
+格式：`模块名 + 类型描述`
+
+### 命名约定表
+
+| 类型用途  | 命名格式                   | 示例                                       |
+| --------- | -------------------------- | ------------------------------------------ |
+| 信息/实体 | `模块名 + Info`            | `UserInfo`, `ProductInfo`                  |
+| 列表项    | `模块名 + Item`            | `UserItem`, `ProductItem`                  |
+| 请求参数  | `模块名 + 操作 + Params`   | `UserLoginParams`, `ProductCreateParams`   |
+| 响应数据  | `模块名 + 操作 + Response` | `UserLoginResponse`, `ProductListResponse` |
+| 状态枚举  | `模块名 + Status`          | `OrderStatus`, `UserStatus`                |
+| 类型枚举  | `模块名 + Type`            | `ProductType`, `OrderType`                 |
+
+### 示例对比
+
+```typescript
+// ❌ 错误 - 没有模块前缀
+export interface Info {}
+export interface Params {}
+export interface Response {}
+
+// ✅ 正确 - 使用模块前缀
+export interface UserInfo {}
+export interface UserLoginParams {}
+export interface UserLoginResponse {}
+```
+
+## 📝 types.ts - 类型定义文件
+
+**职责**：定义该模块相关的所有 TypeScript 类型
+
+### 示例：用户模块类型定义
+
+参考文件：[src/services/user/types.ts](mdc:src/services/user/types.ts)
+
+```typescript
+/**
+ * 用户相关类型定义
+ */
+
+// 用户信息
+export interface UserInfo {
+  id: number
+  username: string
+  email: string
+  avatar?: string
+  phone?: string
+}
+
+// 登录参数
+export interface UserLoginParams {
+  username: string
+  password: string
+}
+
+// 登录响应
+export interface UserLoginResponse {
+  token: string
+  userInfo: UserInfo
+}
+
+// 更新用户信息参数
+export interface UserUpdateParams {
+  email?: string
+  avatar?: string
+  phone?: string
+}
+
+// 用户状态枚举
+export enum UserStatus {
+  Active = 'active',
+  Inactive = 'inactive',
+  Banned = 'banned',
+}
+```
+
+## 🔌 index.ts - API 方法定义文件
+
+**职责**：定义该模块的所有 API 方法
+
+### 示例：用户模块 API 定义
+
+参考文件：[src/services/user/index.ts](mdc:src/services/user/index.ts)
+
+```typescript
+import { http } from '@/utils/request'
+import type { UserLoginParams, UserLoginResponse, UserInfo, UserUpdateParams } from './types'
+
+/**
+ * 用户相关 API
+ */
+export const UserAPI = {
+  /**
+   * 用户登录
+   */
+  login(params: UserLoginParams) {
+    return http.post<UserLoginResponse>('/user/login', params)
+  },
+
+  /**
+   * 获取用户信息
+   */
+  getUserInfo() {
+    return http.get<UserInfo>('/user/info')
+  },
+
+  /**
+   * 更新用户信息
+   */
+  updateUserInfo(data: UserUpdateParams) {
+    return http.put<UserInfo>('/user/info', data)
+  },
+
+  /**
+   * 退出登录
+   */
+  logout() {
+    return http.post<void>('/user/logout')
+  },
+}
+
+// 导出类型，方便外部使用
+export type { UserInfo, UserLoginParams, UserLoginResponse, UserUpdateParams } from './types'
+```
+
+### API 方法命名规范
+
+```typescript
+// ✅ 正确：使用清晰的动词
+login() // 登录
+logout() // 登出
+getUserInfo() // 获取用户信息
+getUserList() // 获取用户列表
+createUser() // 创建用户
+updateUser() // 更新用户
+deleteUser() // 删除用户
+
+// ❌ 错误：不清晰的命名
+user() // 不明确
+getUser() // 获取单个还是列表？
+userInfo() // 缺少动词
+```
+
+## 📤 统一导出
+
+在 `src/services/index.ts` 中统一导出所有模块：
+
+```typescript
+// src/services/index.ts
+export * from './user'
+export * from './product'
+export * from './order'
+```
+
+这样可以从 `@/services` 直接导入：
+
+```typescript
+import { UserAPI, ProductAPI, OrderAPI, type UserInfo } from '@/services'
+```
+
+## 🚀 创建新模块步骤
+
+### 步骤 1: 创建目录结构
+
+```bash
+mkdir -p src/services/product
+```
+
+### 步骤 2: 创建 types.ts
+
+```typescript
+// src/services/product/types.ts
+
+/**
+ * 产品相关类型定义
+ */
+
+// 产品信息
+export interface ProductInfo {
+  id: number
+  name: string
+  price: number
+  description?: string
+  imageUrl?: string
+}
+
+// 产品列表查询参数
+export interface ProductListParams {
+  page?: number
+  pageSize?: number
+  category?: string
+  keyword?: string
+}
+
+// 产品列表响应
+export interface ProductListResponse {
+  list: ProductInfo[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+// 创建产品参数
+export interface ProductCreateParams {
+  name: string
+  price: number
+  description?: string
+  imageUrl?: string
+}
+
+// 产品类型枚举
+export enum ProductType {
+  Physical = 'physical',
+  Digital = 'digital',
+  Service = 'service',
+}
+```
+
+### 步骤 3: 创建 index.ts
+
+```typescript
+// src/services/product/index.ts
+import { http } from '@/utils/request'
+import type {
+  ProductInfo,
+  ProductListParams,
+  ProductListResponse,
+  ProductCreateParams,
+} from './types'
+
+/**
+ * 产品相关 API
+ */
+export const ProductAPI = {
+  /**
+   * 获取产品列表
+   */
+  getList(params?: ProductListParams) {
+    return http.get<ProductListResponse>('/products', { params })
+  },
+
+  /**
+   * 获取产品详情
+   */
+  getDetail(id: number) {
+    return http.get<ProductInfo>(`/products/${id}`)
+  },
+
+  /**
+   * 创建产品
+   */
+  create(data: ProductCreateParams) {
+    return http.post<ProductInfo>('/products', data)
+  },
+
+  /**
+   * 更新产品
+   */
+  update(id: number, data: Partial<ProductCreateParams>) {
+    return http.put<ProductInfo>(`/products/${id}`, data)
+  },
+
+  /**
+   * 删除产品
+   */
+  delete(id: number) {
+    return http.delete<void>(`/products/${id}`)
+  },
+}
+
+// 导出类型
+export type {
+  ProductInfo,
+  ProductListParams,
+  ProductListResponse,
+  ProductCreateParams,
+} from './types'
+```
+
+### 步骤 4: 在 services/index.ts 中导出
+
+```typescript
+// src/services/index.ts
+export * from './user'
+export * from './product' // 新增
+export * from './order'
+```
+
+### 步骤 5: 在组件中使用
+
+```typescript
+import { FC, useEffect, useState } from 'react'
+import { ProductAPI, type ProductInfo } from '@/services'
+import { Toast } from 'antd-mobile'
+
+const ProductList: FC = () => {
+  const [products, setProducts] = useState<ProductInfo[]>([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true)
+      try {
+        const res = await ProductAPI.getList({ page: 1, pageSize: 10 })
+        setProducts(res.list)
+      } catch (error) {
+        Toast.show({ content: '获取产品列表失败' })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchProducts()
+  }, [])
+
+  return (
+    <div>
+      {products.map(product => (
+        <div key={product.id}>{product.name}</div>
+      ))}
+    </div>
+  )
+}
+
+export default ProductList
+```
+
+## ✅ 最佳实践
+
+### 1. 类型定义
+
+- ✅ 使用有意义的类型名称
+- ✅ 为每个类型添加 JSDoc 注释
+- ✅ 使用 `interface` 定义对象类型
+- ✅ 使用 `type` 定义联合类型、交叉类型等
+- ✅ 可选属性使用 `?`
+- ✅ 导出所有需要在模块外部使用的类型
+- ✅ **类型名必须使用模块前缀**（避免冲突）
+
+### 2. API 方法
+
+- ✅ 使用统一的命名规范：`模块名API`（如 `UserAPI`、`ProductAPI`）
+- ✅ 每个方法都有清晰的 JSDoc 注释
+- ✅ 使用类型导入（`import type`）提高性能
+- ✅ 在文件末尾统一导出类型
+- ✅ 使用 `http` 工具函数进行请求
+- ✅ 为所有 HTTP 方法指定返回类型泛型
+
+### 3. 导入导出
+
+- ✅ 在 `src/services/index.ts` 中统一导出
+- ✅ 使用 `export *` 导出模块的所有内容
+- ✅ 类型和 API 方法都可以从 `@/services` 导入
+
+```typescript
+// 在组件中使用
+import { UserAPI, ProductAPI, type UserInfo, type ProductInfo } from '@/services'
+```
+
+### 4. 类型复用
+
+对于跨模块使用的通用类型，应该提取到公共类型文件：
+
+```typescript
+// src/services/types/common.ts
+
+/**
+ * 通用类型定义
+ */
+
+// 分页参数（多个模块使用）
+export interface PaginationParams {
+  page: number
+  pageSize: number
+}
+
+// 分页响应（多个模块使用）
+export interface PaginationResponse<T> {
+  list: T[]
+  total: number
+  page: number
+  pageSize: number
+}
+```
+
+然后在各模块中使用：
+
+```typescript
+// src/services/user/types.ts
+import type { PaginationParams, PaginationResponse } from '../types/common'
+
+export interface UserListParams extends PaginationParams {
+  status?: UserStatus
+  keyword?: string
+}
+
+export type UserListResponse = PaginationResponse<UserInfo>
+```
+
+## 🚫 常见错误
+
+### ❌ 错误示例
+
+```typescript
+// 错误 1: 没有模块前缀
+export interface Info {}
+export interface Params {}
+
+// 错误 2: 模块前缀不一致
+export interface UserInfo {}
+export interface ProductInfo {}
+export interface OrderData {} // 应该用 OrderInfo
+
+// 错误 3: 命名不清晰
+export interface UserParams {} // 应该用 UserLoginParams 或 UserUpdateParams
+
+// 错误 4: 没有导出类型
+export const UserAPI = {
+  login(params: UserLoginParams) {},
+}
+// 缺少: export type { UserLoginParams } from './types'
+
+// 错误 5: 使用 any
+export const UserAPI = {
+  login(params: any) {
+    // 应该使用具体类型
+    return http.post('/user/login', params)
+  },
+}
+```
+
+### ✅ 正确示例
+
+```typescript
+// 正确: 使用模块前缀
+export interface UserInfo {}
+export interface ProductInfo {}
+export interface OrderInfo {}
+
+// 正确: 清晰的命名
+export interface UserLoginParams {}
+export interface UserUpdateParams {}
+export interface ProductCreateParams {}
+
+// 正确: 导出类型
+export const UserAPI = {
+  login(params: UserLoginParams) {
+    return http.post<UserLoginResponse>('/user/login', params)
+  },
+}
+export type { UserLoginParams, UserLoginResponse } from './types'
+```
+
+## 🔍 HTTP 请求工具
+
+项目已封装 Axios 请求工具，位于 [src/utils/request.ts](mdc:src/utils/request.ts)
+
+### 支持的方法
+
+```typescript
+// GET 请求
+http.get<ResponseType>(url, config)
+
+// POST 请求
+http.post<ResponseType>(url, data, config)
+
+// PUT 请求
+http.put<ResponseType>(url, data, config)
+
+// DELETE 请求
+http.delete<ResponseType>(url, config)
+
+// PATCH 请求
+http.patch<ResponseType>(url, data, config)
+```
+
+### 特性
+
+- ✅ 自动添加 token 到请求头
+- ✅ 统一错误处理
+- ✅ 请求/响应拦截器
+- ✅ 401 自动登出
+- ✅ TypeScript 类型支持
+
+## 📚 相关文档
+
+- [API 开发规范详细文档](mdc:docs/API_GUIDE.md)
+- [HTTP 请求工具](mdc:src/utils/request.ts)
+- [用户模块示例](mdc:src/services/user)
+- [代码规范](mdc:.cursor/rules/code-standards.mdc)

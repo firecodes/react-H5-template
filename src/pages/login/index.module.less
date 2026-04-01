@@ -1,0 +1,164 @@
+// BEM 命名规范: Block_Element__Modifier (小驼峰)
+// Block: loginPage
+// Element: loginPage_elementName (使用单下划线 _)
+// Modifier: loginPage__modifierName 或 loginPage_elementName__modifierName (使用双下划线 __)
+
+.loginPage {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.loginPage_content {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 24px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.loginPage_logoSection {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.loginPage_logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.loginPage_title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 8px;
+}
+
+.loginPage_subtitle {
+  font-size: 14px;
+  color: #999;
+  margin: 0;
+}
+
+.loginPage_form {
+  margin-bottom: 24px;
+
+  :global(.adm-form-item-label) {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+  }
+
+  :global(.adm-input) {
+    height: 48px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s;
+
+    &:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+  }
+
+  :global(.adm-form-item-error) {
+    :global(.adm-input) {
+      border-color: #ff4d4f;
+    }
+  }
+}
+
+.loginPage_passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.loginPage_passwordInput {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.loginPage_eyeIcon {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #999;
+  padding: 4px;
+  transition: color 0.3s;
+  z-index: 1;
+
+  &:hover {
+    color: #667eea;
+  }
+
+  &:active {
+    opacity: 0.7;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.loginPage_submitButton {
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  margin-top: 8px;
+  transition: all 0.3s;
+
+  &:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+// Modifier 示例: loginPage_submitButton__loading
+.loginPage_submitButton__loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+// 响应式设计
+@media (max-width: 375px) {
+  .loginPage_content {
+    padding: 24px 20px;
+  }
+
+  .loginPage_logo {
+    width: 64px;
+    height: 64px;
+    font-size: 32px;
+  }
+
+  .loginPage_title {
+    font-size: 20px;
+  }
+}

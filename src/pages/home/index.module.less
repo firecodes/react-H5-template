@@ -1,0 +1,35 @@
+// BEM 命名规范: Block_Element__Modifier (小驼峰)
+// Block: homePage
+// Element: homePage_elementName (使用单下划线 _)
+// Modifier: homePage__modifierName 或 homePage_elementName__modifierName (使用双下划线 __)
+
+.homePage {
+  padding: 16px;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.homePage_content {
+  h1 {
+    font-size: 24px;
+    margin-bottom: 16px;
+    color: #333;
+  }
+
+  p {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+}
+
+.homePage_buttonGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  button {
+    width: 100%;
+  }
+}

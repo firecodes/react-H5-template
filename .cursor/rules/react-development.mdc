@@ -1,0 +1,550 @@
+---
+globs: src/**/*.{tsx,jsx}
+description: React 组件开发规范 - 组件结构、Hooks 使用、Props 设计、性能优化
+---
+
+# React 开发规范
+
+## 📦 组件分类
+
+### 1. 通用组件（Common Components）
+
+存放位置：`src/components/Common/`
+
+**特点**：
+
+- 纯 UI 组件，无业务逻辑
+- 高度可复用
+- 完善的 Props 类型定义
+- 提供默认值
+
+```typescript
+// ✅ 示例：通用按钮组件
+import { FC, ReactNode } from 'react'
+import classNames from 'classnames'
+import styles from './index.module.less'
+
+interface ButtonProps {
+  /** 按钮类型 */
+  type?: 'primary' | 'default' | 'danger'
+  /** 按钮大小 */
+  size?: 'small' | 'medium' | 'large'
+  /** 是否禁用 */
+  disabled?: boolean
+  /** 按钮内容 */
+  children: ReactNode
+  /** 点击事件 */
+  onClick?: () => void
+}
+
+const Button: FC<ButtonProps> = ({
+  type = 'default',
+  size = 'medium',
+  disabled = false,
+  children,
+  onClick,
+}) => {
+  const handleClick = () => {
+    if (disabled) return
+    onClick?.()
+  }
+
+  return (
+    <button
+      className={classNames(
+        styles.button,
+        styles[`button__${type}`],
+        styles[`button__${size}`],
+        { [styles.button__disabled]: disabled }
+      )}
+      onClick={handleClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  )
+}
+
+export default Button
+```
+
+### 2. 业务组件（Business Components）
+
+存放位置：`src/components/Business/`
+
+**特点**：
+
+- 包含业务逻辑
+- 可能调用 API
+- 可能使用全局状态
+- 在多个页面复用
+
+```typescript
+// ✅ 示例：用户卡片业务组件
+import { FC } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Card, Avatar } from 'antd-mobile'
+import { useUserStore } from '@/store'
+import styles from './index.module.less'
+
+interface UserCardProps {
+  userId: number
+  showActions?: boolean
+}
+
+const UserCard: FC<UserCardProps> = ({ userId, showActions = true }) => {
+  const navigate = useNavigate()
+  const { userInfo } = useUserStore()
+
+  const handleViewProfile = () => {
+    navigate(`/user/${userId}`)
+  }
+
+  return (
+    <Card className={styles.userCard}>
+      <div className={styles.userCard_header}>
+        <Avatar src={userInfo?.avatar} />
+        <div className={styles.userCard_info}>
+          <h3>{userInfo?.username}</h3>
+          <p>{userInfo?.email}</p>
+        </div>
+      </div>
+      {showActions && (
+        <div className={styles.userCard_actions}>
+          <button onClick={handleViewProfile}>查看详情</button>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+export default UserCard
+```
+
+### 3. 页面组件（Page Components）
+
+存放位置：`src/pages/{pageName}/`
+
+**特点**：
+
+- 对应路由
+- 组织页面结构
+- 协调子组件
+- 处理页面级状态
+
+## 🏗️ 组件代码结构
+
+```typescript
+// 1. 导入第三方库
+import { FC, useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Button, Toast } from 'antd-mobile'
+
+// 2. 导入项目内部模块
+import { useRequest } from '@/hooks'
+import { UserAPI } from '@/services'
+import { useUserStore } from '@/store'
+
+// 3. 导入类型定义
+import type { User } from '@/services'
+
+// 4. 导入样式
+import styles from './index.module.less'
+
+// 5. 定义类型
+interface ComponentProps {
+  userId: number
+  onUserLoad?: (user: User) => void
+}
+
+// 6. 定义常量
+const DEFAULT_PAGE_SIZE = 10
+
+// 7. 组件定义
+const UserProfile: FC<ComponentProps> = ({ userId, onUserLoad }) => {
+  // 7.1 Hooks（Router、Store 等）
+  const navigate = useNavigate()
+  const { userInfo } = useUserStore()
+
+  // 7.2 State
+  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<User | null>(null)
+
+  // 7.3 Computed values（useMemo）
+  const displayName = useMemo(() => {
+    return data?.username || '未命名用户'
+  }, [data])
+
+  // 7.4 Methods（useCallback）
+  const handleRefresh = useCallback(() => {
+    setLoading(true)
+    // 刷新逻辑
+  }, [])
+
+  // 7.5 Effects
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await UserAPI.getUserInfo()
+      setData(user)
+      onUserLoad?.(user)
+    }
+    fetchUser()
+  }, [userId, onUserLoad])
+
+  // 7.6 Render
+  return (
+    <div className={styles.userProfile}>
+      <h1>{displayName}</h1>
+      <Button onClick={handleRefresh}>刷新</Button>
+    </div>
+  )
+}
+
+// 8. 导出
+export default UserProfile
+```
+
+## 🪝 Hooks 使用规范
+
+### 1. Hooks 调用顺序
+
+```typescript
+// ✅ 正确：Hooks 在组件顶层调用
+const Component: FC = () => {
+  const navigate = useNavigate()
+  const { userInfo } = useUserStore()
+  const [count, setCount] = useState(0)
+
+  // ...
+}
+
+// ❌ 错误：在条件语句中调用 Hooks
+const Component: FC = () => {
+  if (condition) {
+    const [count, setCount] = useState(0) // 错误！
+  }
+}
+
+// ❌ 错误：在循环中调用 Hooks
+const Component: FC = () => {
+  for (let i = 0; i < 10; i++) {
+    const [count, setCount] = useState(0) // 错误！
+  }
+}
+```
+
+### 2. useState 使用
+
+```typescript
+// ✅ 正确：明确的状态命名
+const [isLoading, setIsLoading] = useState(false)
+const [userList, setUserList] = useState<User[]>([])
+const [formData, setFormData] = useState<FormData>({
+  username: '',
+  email: '',
+})
+
+// ✅ 正确：使用函数式更新
+setCount(prevCount => prevCount + 1)
+setUserList(prevList => [...prevList, newUser])
+
+// ❌ 错误：直接修改状态
+userList.push(newUser) // 错误！
+setUserList(userList) // 不会触发更新
+```
+
+### 3. useEffect 使用
+
+```typescript
+// ✅ 正确：明确依赖项
+useEffect(() => {
+  fetchData(userId)
+}, [userId])
+
+// ✅ 正确：清理副作用
+useEffect(() => {
+  const timer = setInterval(() => {
+    console.log('tick')
+  }, 1000)
+
+  return () => {
+    clearInterval(timer)
+  }
+}, [])
+
+// ❌ 错误：缺少依赖项
+useEffect(() => {
+  fetchData(userId) // userId 应该在依赖项中
+}, [])
+
+// ❌ 错误：依赖项过多导致频繁执行
+useEffect(() => {
+  // ...
+}, [obj]) // 对象引用每次都变化
+```
+
+### 4. useCallback 和 useMemo
+
+```typescript
+// ✅ 正确：缓存函数避免子组件重渲染
+const handleClick = useCallback(() => {
+  console.log(count)
+}, [count])
+
+// ✅ 正确：缓存计算结果
+const sortedUsers = useMemo(() => {
+  return users.sort((a, b) => a.name.localeCompare(b.name))
+}, [users])
+
+// ❌ 错误：过度使用（简单函数不需要缓存）
+const handleClick = useCallback(() => {
+  console.log('clicked') // 简单函数不需要缓存
+}, [])
+
+// ❌ 错误：缺少依赖
+const handleClick = useCallback(() => {
+  console.log(count) // count 应该在依赖项中
+}, [])
+```
+
+### 5. 使用 ahooks
+
+项目集成了 [ahooks](https://ahooks.js.org/)，优先使用其提供的 Hooks：
+
+```typescript
+import { useRequest, useDebounce, useLocalStorageState } from '@/hooks'
+import { UserAPI } from '@/services'
+
+const Component: FC = () => {
+  // ✅ 使用 useRequest 管理请求
+  const { data, loading, run } = useRequest(UserAPI.getUserInfo)
+
+  // ✅ 使用 useDebounce 防抖
+  const [searchText, setSearchText] = useState('')
+  const debouncedSearch = useDebounce(searchText, { wait: 500 })
+
+  // ✅ 使用 useLocalStorageState 持久化状态
+  const [theme, setTheme] = useLocalStorageState('theme', {
+    defaultValue: 'light',
+  })
+
+  // ...
+}
+```
+
+## 🎨 Props 设计规范
+
+### 1. Props 类型定义
+
+```typescript
+// ✅ 正确：完整的类型定义和注释
+interface UserCardProps {
+  /** 用户 ID */
+  userId: number
+  /** 是否显示头像 */
+  showAvatar?: boolean
+  /** 用户点击回调 */
+  onUserClick?: (userId: number) => void
+}
+
+// ❌ 错误：使用 any 或缺少注释
+interface UserCardProps {
+  userId: any
+  showAvatar?: boolean
+  onClick?: any
+}
+```
+
+### 2. Props 默认值
+
+```typescript
+// ✅ 正确：使用解构赋值设置默认值
+const Button: FC<ButtonProps> = ({
+  type = 'default',
+  size = 'medium',
+  disabled = false,
+  children,
+  onClick,
+}) => {
+  // ...
+}
+
+// ❌ 错误：在函数体内设置默认值
+const Button: FC<ButtonProps> = props => {
+  const type = props.type || 'default' // 不推荐
+  const size = props.size || 'medium' // 不推荐
+  // ...
+}
+```
+
+### 3. Props 验证
+
+```typescript
+// ✅ 正确：必需的 Props 不设置可选标记
+interface UserListProps {
+  users: User[] // 必需
+  pageSize?: number // 可选
+  onUserSelect: (user: User) => void // 必需的回调
+}
+
+// ❌ 错误：所有 Props 都设为可选
+interface UserListProps {
+  users?: User[]
+  pageSize?: number
+  onUserSelect?: (user: User) => void
+}
+```
+
+## 🎯 JSX 编写规范
+
+### 1. 组件属性
+
+```typescript
+// ✅ 正确：多个属性时换行
+<Button
+  type="primary"
+  size="large"
+  disabled={isLoading}
+  onClick={handleClick}
+>
+  Submit
+</Button>
+
+// ✅ 单个属性时可以单行
+<Button type="primary">Submit</Button>
+
+// ❌ 错误：多个属性挤在一行
+<Button type="primary" size="large" disabled={isLoading} onClick={handleClick}>Submit</Button>
+```
+
+### 2. 条件渲染
+
+```typescript
+// ✅ 正确：简单条件使用三元或 &&
+{isLoading ? <Loading /> : <Content />}
+{isError && <ErrorMessage />}
+
+// ✅ 正确：复杂条件提取为函数
+const renderContent = () => {
+  if (isLoading) return <Loading />
+  if (isError) return <ErrorMessage />
+  return <Content />
+}
+
+return <div>{renderContent()}</div>
+
+// ❌ 错误：在 JSX 中写复杂逻辑
+{isLoading ? <Loading /> : isError ? <ErrorMessage /> : hasData ? <Content /> : <Empty />}
+```
+
+### 3. 列表渲染
+
+```typescript
+// ✅ 正确：使用稳定的 key
+{users.map(user => (
+  <UserCard key={user.id} user={user} />
+))}
+
+// ❌ 错误：使用 index 作为 key
+{users.map((user, index) => (
+  <UserCard key={index} user={user} />
+))}
+```
+
+### 4. 事件处理
+
+```typescript
+// ✅ 正确：不需要参数时直接传递函数
+<Button onClick={handleClick}>Click</Button>
+
+// ✅ 正确：需要参数时使用箭头函数
+<Button onClick={() => handleDelete(user.id)}>Delete</Button>
+
+// ✅ 更好：使用 useCallback 优化
+const handleDelete = useCallback((id: number) => {
+  // 删除逻辑
+}, [])
+
+<Button onClick={() => handleDelete(user.id)}>Delete</Button>
+
+// ❌ 错误：直接调用函数
+<Button onClick={handleClick()}>Click</Button>
+```
+
+## ⚡ 性能优化
+
+### 1. 避免不必要的渲染
+
+```typescript
+// ✅ 正确：使用 React.memo
+const UserCard = React.memo<UserCardProps>(({ user }) => {
+  return <div>{user.name}</div>
+})
+
+// ✅ 正确：使用 useMemo 缓存计算结果
+const sortedUsers = useMemo(() => {
+  return users.sort((a, b) => a.name.localeCompare(b.name))
+}, [users])
+
+// ✅ 正确：使用 useCallback 缓存函数
+const handleUserClick = useCallback((userId: number) => {
+  navigate(`/user/${userId}`)
+}, [navigate])
+```
+
+### 2. 列表优化
+
+```typescript
+// ✅ 正确：使用稳定的 key
+{users.map(user => (
+  <UserCard key={user.id} user={user} />
+))}
+
+// ✅ 正确：大量数据使用虚拟列表
+import { List } from 'react-virtualized'
+
+<List
+  width={300}
+  height={600}
+  rowCount={users.length}
+  rowHeight={50}
+  rowRenderer={({ index, key, style }) => (
+    <div key={key} style={style}>
+      <UserCard user={users[index]} />
+    </div>
+  )}
+/>
+```
+
+### 3. 懒加载
+
+```typescript
+// ✅ 正确：路由懒加载
+import { lazy, Suspense } from 'react'
+
+const UserProfile = lazy(() => import('@/pages/userProfile'))
+
+<Suspense fallback={<Loading />}>
+  <UserProfile />
+</Suspense>
+```
+
+## 🚫 避免的做法
+
+1. **避免使用 any**：失去类型安全
+2. **避免在 JSX 中写复杂逻辑**：影响可读性
+3. **避免直接修改 state**：破坏不可变性
+4. **避免过度优化**：不要过早优化
+5. **避免深层嵌套**：组件嵌套不超过 3 层
+6. **避免使用 index 作为 key**：可能导致性能问题
+7. **避免在循环中定义组件**：每次渲染都会创建新组件
+8. **避免滥用 Context**：只用于真正全局的状态
+9. **避免在 useEffect 中缺少依赖**：可能导致 bug
+10. **避免忽略 ESLint 警告**：警告通常有意义
+
+## 📚 相关文档
+
+- [React 官方文档](https://react.dev/)
+- [ahooks 文档](https://ahooks.js.org/)
+- [项目 React 开发规范](mdc:docs/REACT_GUIDE.md)
+- [代码规范](mdc:.cursor/rules/code-standards.mdc)
