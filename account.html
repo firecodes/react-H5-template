@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="requires-auth" content="true">
+  <meta name="allowed-roles" content="super_admin">
+  <meta name="redirect-to" content="login.html">
+  <title>账号管理</title>
+
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- 引入 React 和 ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- 引入 Babel 用于在浏览器中编译 JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- 引入 Supabase 客户端 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 引入权限检查 -->
+  <script src="js/auth_checker.js"></script>
+  <!-- 引入 bcryptjs 用于密码加密 -->
+  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+  <!-- 配置文件 -->
+  <script src="js/config.js"></script>
+  <!-- 配置加载器 -->
+  <script src="js/config-loader.js"></script>
+  <!-- 引入 Supabase API 封装 -->
+  <script src="js/supabase_api.js"></script>
+
+  <style>
+    /* 自定义滚动条样式 */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #d1d5db;
+      border-radius: 10px;
+    }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+      background-color: #9ca3af;
+    }
+
+    /* 骨架屏加载动画 */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+      100% {
+        background-position: -200% 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // --- 图标组件 ---
+    const Icon = ({ name, className }) => {
+      const icons = {
+        Home: <React.Fragment><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></React.Fragment>,
+        List: <React.Fragment><line x1="8" x2="21" y1="6" y2="6"></line><line x1="8" x2="21" y1="12" y2="12"></line><line x1="8" x2="21" y1="18" y2="18"></line><line x1="3" x2="3.01" y1="6" y2="6"></line><line x1="3" x2="3.01" y1="12" y2="12"></line><line x1="3" x2="3.01" y1="18" y2="18"></line></React.Fragment>,
+        Users: <React.Fragment><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></React.Fragment>,
+        LogOut: <React.Fragment><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></React.Fragment>,
+        User: <React.Fragment><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></React.Fragment>,
+        Eye: <React.Fragment><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></React.Fragment>,
+        EyeOff: <React.Fragment><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" x2="23" y1="1" y2="23"></line></React.Fragment>,
+        Lock: <React.Fragment><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></React.Fragment>,
+        Plus: <React.Fragment><line x1="12" x2="12" y1="5" y2="19"></line><line x1="5" x2="19" y1="12" y2="12"></line></React.Fragment>,
+        RefreshCw: <React.Fragment><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></React.Fragment>,
+        X: <React.Fragment><line x1="18" x2="6" y1="6" y2="18"></line><line x1="6" x2="18" y1="6" y2="18"></line></React.Fragment>,
+        CheckCircle: <React.Fragment><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></React.Fragment>,
+        AlertCircle: <React.Fragment><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></React.Fragment>,
+        ArrowRight: <polyline points="9 18 15 12 9 6"></polyline>
+      };
+
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+          {icons[name] || <circle cx="12" cy="12" r="10" />}
+        </svg>
+      );
+    };
+
+    // 角色名称映射
+    const roleMap = {
+      1: '超管',
+      2: '管理员',
+      3: '用户'
+    };
+
+    // --- 修改密码弹窗组件 ---
+    const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
+      const [oldPassword, setOldPassword] = useState('');
+      const [newPassword, setNewPassword] = useState('');
+      const [confirmPassword, setConfirmPassword] = useState('');
+      const [showOldPassword, setShowOldPassword] = useState(false);
+      const [showNewPassword, setShowNewPassword] = useState(false);
+      const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const [errors, setErrors] = useState([]);
+      const [successMessage, setSuccessMessage] = useState('');
+
+      const validateForm = () => {
+        const errors = [];
+        if (!oldPassword.trim()) {
+          errors.push('请输入旧密码');
+        }
+        if (!newPassword.trim()) {
+          errors.push('请输入新密码');
+        } else if (newPassword.length < 6) {
+          errors.push('密码长度至少为6位');
+        }
+        if (!confirmPassword.trim()) {
+          errors.push('请确认密码');
+        } else if (newPassword !== confirmPassword) {
+          errors.push('两次输入的密码不一致');
+        }
+        return errors;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrors([]);
+        setSuccessMessage('');
+
+        const validationErrors = validateForm();
+        if (validationErrors.length > 0) {
+          setErrors(validationErrors);
+          return;
+        }
+
+        setIsLoading(true);
+        try {
+          const result = await window.H5CmsAPI.AuthAPI.changePassword(oldPassword, newPassword);
+          if (result.code === 200) {
+            setSuccessMessage('密码修改成功！');
+            setTimeout(() => {
+              onSuccess();
+            }, 1500);
+          }
+        } catch (error) {
+          setErrors([error.message]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] z-[9999] flex items-center justify-center">
+          <div className="absolute top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] bg-slate-900/40 backdrop-blur-xl"></div>
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto z-[10000]">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">修改密码</h2>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <Icon name="X" className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {errors.length > 0 && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    {errors.map((error, index) => (
+                      <div key={index} className="flex items-center text-red-600 text-sm">
+                        <Icon name="AlertCircle" className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center text-green-600">
+                      <Icon name="CheckCircle" className="w-5 h-5 mr-2" />
+                      {successMessage}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">旧密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showOldPassword ? 'text' : 'password'}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入旧密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowOldPassword(!showOldPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showOldPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">新密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入新密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showNewPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">确认新密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请确认新密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showConfirmPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        修改中...
+                      </div>
+                    ) : '修改密码'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 用户菜单弹窗组件 ---
+    const UserMenuModal = ({ isOpen, onClose, onChangePassword, onLogout }) => {
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] z-[9998] flex items-center justify-center">
+          <div className="absolute top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] bg-slate-900/40 backdrop-blur-xl" onClick={onClose}></div>
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full max-h-[90vh] overflow-y-auto z-[10000]">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-800">用户菜单</h2>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <button
+                onClick={() => {
+                  onClose();
+                  onChangePassword();
+                }}
+                className="w-full flex items-center justify-start px-4 py-3 rounded-xl text-slate-700 border-2 border-gray-200 hover:bg-yellow-50 hover:text-yellow-800 hover:border-yellow-400 transition-all"
+              >
+                <Icon name="User" className="w-5 h-5 mr-3" />
+                修改密码
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="w-full flex items-center justify-start px-4 py-3 rounded-xl text-slate-700 border-2 border-gray-200 hover:bg-red-50 hover:text-red-800 hover:border-red-400 transition-all"
+              >
+                <Icon name="LogOut" className="w-5 h-5 mr-3" />
+                退出账号
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full flex items-center justify-start px-4 py-3 rounded-xl text-slate-700 border-2 border-gray-200 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 transition-all"
+              >
+                <Icon name="X" className="w-5 h-5 mr-3" />
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // 角色颜色映射
+    const roleColorMap = {
+      1: 'bg-red-100 text-red-800',
+      2: 'bg-orange-100 text-orange-800',
+      3: 'bg-blue-100 text-blue-800'
+    };
+
+    // 状态名称映射
+    const statusMap = {
+      1: '启用',
+      2: '禁用'
+    };
+
+    // 状态颜色映射
+    const statusColorMap = {
+      1: 'bg-green-100 text-green-800',
+      2: 'bg-red-100 text-red-800'
+    };
+
+    // 注册验证函数
+    const validateRegister = (username, password, confirmPassword, realName, role) => {
+      const errors = [];
+
+      if (!username.trim()) {
+        errors.push('请输入账号');
+      } else if (username.length < 3) {
+        errors.push('账号长度至少为3位'); 
+      }
+
+      if (!password.trim()) {
+        errors.push('请输入密码');
+      } else if (password.length < 6) {
+        errors.push('密码长度至少为6位');
+      }
+
+      if (!confirmPassword.trim()) {
+        errors.push('请确认密码');
+      } else if (password !== confirmPassword) {
+        errors.push('两次输入的密码不一致');
+      }
+
+      if (!realName.trim()) {
+        errors.push('请输入姓名 ');
+      }
+
+      if (!role) {
+        errors.push('请选择角色');
+      }
+
+      return errors;
+    };
+
+    // 生成 UUID
+    const generateUUID = () => {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0,
+            v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    };
+
+    // --- 密码显示组件 ---
+    const PasswordCell = ({ password }) => {
+      const [showPassword, setShowPassword] = useState(false);
+
+      if (!password) {
+        return <span className="text-sm text-slate-400">-</span>;
+      }
+
+      // 检查密码是否已加密（bcrypt 格式以 $2a$ 开头）
+      const isEncrypted = typeof password === 'string' && password.startsWith('$2a$');
+
+      return (
+        <div className="flex items-center space-x-2">
+          <div className="text-sm">
+            {showPassword ? (
+              <span className="font-mono text-slate-600">{password}</span>
+            ) : (
+              <span className="text-slate-400">••••••••</span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowPassword(!showPassword)}
+            className="text-slate-400 hover:text-slate-600 focus:outline-none"
+            title={showPassword ? "隐藏密码" : "显示密码"}
+          >
+            <Icon name={showPassword ? "EyeOff" : "Eye"} className="h-4 w-4" />
+          </button>
+          {isEncrypted && (
+            <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded-full">
+              已加密
+            </span>
+          )}
+          {!isEncrypted && password && (
+            <span className="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+              明文
+            </span>
+          )}
+        </div>
+      );
+    };
+
+    // --- 重置密码弹窗组件 ---
+    const ResetPasswordModal = ({ isOpen, onClose, user, onSuccess }) => {
+      const [newPassword, setNewPassword] = useState('');
+      const [confirmPassword, setConfirmPassword] = useState('');
+      const [showPassword, setShowPassword] = useState(false);
+      const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const [errors, setErrors] = useState([]);
+      const [successMessage, setSuccessMessage] = useState('');
+
+      const validateForm = () => {
+        const errors = [];
+        if (!newPassword.trim()) {
+          errors.push('请输入新密码');
+        } else if (newPassword.length < 6) {
+          errors.push('密码长度至少为6位');
+        }
+        if (!confirmPassword.trim()) {
+          errors.push('请确认密码');
+        } else if (newPassword !== confirmPassword) {
+          errors.push('两次输入的密码不一致');
+        }
+        return errors;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrors([]);
+        setSuccessMessage('');
+
+        const validationErrors = validateForm();
+        if (validationErrors.length > 0) {
+          setErrors(validationErrors);
+          return;
+        }
+
+        setIsLoading(true);
+        try {
+          const result = await window.H5CmsAPI.AuthAPI.resetUserPassword(user.id, newPassword);
+          if (result.code === 200) {
+            setSuccessMessage('密码重置成功！');
+            setTimeout(() => {
+              onSuccess();
+            }, 1500);
+          }
+        } catch (error) {
+          setErrors([error.message]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      if (!isOpen || !user) return null;
+
+      return (
+        <div className="fixed top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] z-[9999] flex items-center justify-center">
+          <div className="absolute top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] bg-slate-900/40 backdrop-blur-xl"></div>
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto z-[10000]">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">重置密码</h2>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <Icon name="X" className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  正在重置用户 <span className="font-semibold">{user.username}</span> 的密码
+                </p>
+              </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {errors.length > 0 && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    {errors.map((error, index) => (
+                      <div key={index} className="flex items-center text-red-600 text-sm">
+                        <Icon name="AlertCircle" className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center text-green-600">
+                      <Icon name="CheckCircle" className="w-5 h-5 mr-2" />
+                      {successMessage}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">新密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入新密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">确认新密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请确认新密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showConfirmPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        重置中...
+                      </div>
+                    ) : '重置密码'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 用户表格组件 ---
+    const UserTable = ({ users, loading, onRefresh, onResetPassword, onToggleStatus }) => {
+      if (loading) {
+        return (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <div className="w-32 h-6 skeleton rounded"></div>
+                <div className="flex items-center space-x-3">
+                  <div className="w-24 h-8 skeleton rounded"></div>
+                  <div className="w-24 h-8 skeleton rounded"></div>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                      <th key={i} className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        <div className="w-16 h-4 skeleton rounded"></div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={index} className="hover:bg-slate-50">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                        <td key={i} className="px-6 py-4 whitespace-nowrap">
+                          <div className="w-24 h-4 skeleton rounded"></div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">用户列表</h2>
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={onRefresh}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 transition-colors"
+                >
+                  <Icon name="RefreshCw" className="w-4 h-4 mr-2" />
+                  刷新
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">账号</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">姓名</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">手机号</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">邮箱</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">角色</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">状态</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">创建时间</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {users.map((user) => (
+                  <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-slate-900">{user.username}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-slate-700">{user.real_name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-slate-700">{user.phone || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-slate-700">{user.email || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${roleColorMap[user.role] || 'bg-gray-100 text-gray-800'}`}>
+                        {roleMap[user.role]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusColorMap[user.status]}`}>
+                        {statusMap[user.status]}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">
+                      {new Date(user.created_at).toLocaleString('zh-CN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => onResetPassword(user)}
+                          className="flex items-center px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          重置密码
+                        </button>
+                        <button
+                          onClick={() => onToggleStatus(user)}
+                          className={`flex items-center px-2 py-1 text-xs font-medium rounded transition-colors ${
+                            user.status === 1
+                              ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                              : 'text-green-600 bg-green-50 hover:bg-green-100'
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            {user.status === 1 ? (
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            ) : (
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            )}
+                          </svg>
+                          {user.status === 1 ? '禁用' : '启用'}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {users.length === 0 && (
+            <div className="text-center py-12">
+              <Icon name="Users" className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-500">暂无用户数据</p>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // --- 创建账号弹窗组件 ---
+    const CreateUserModal = ({ isOpen, onClose, onSuccess }) => {
+      const [username, setUsername] = useState('');
+      const [password, setPassword] = useState('');
+      const [confirmPassword, setConfirmPassword] = useState('');
+      const [realName, setRealName] = useState('');
+      const [phone, setPhone] = useState('');
+      const [email, setEmail] = useState('');
+      const [role, setRole] = useState('');
+      const [showPassword, setShowPassword] = useState(false);
+      const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const [errors, setErrors] = useState([]);
+      const [successMessage, setSuccessMessage] = useState('');
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        // 清除之前的错误和成功信息
+        setErrors([]);
+        setSuccessMessage('');
+
+        // 验证输入
+        const validationErrors = validateRegister(username, password, confirmPassword, realName, role);
+        if (validationErrors.length > 0) {
+          setErrors(validationErrors);
+          return;
+        }
+
+        setIsLoading(true);
+
+        try {
+          // 创建用户数据
+          const userData = {
+            id: generateUUID(),
+            username: username.trim(),
+            password_hash: password,
+            real_name: realName.trim(),
+            phone: phone.trim() || null,
+            email: email.trim() || null,
+            role: parseInt(role),
+            status: 1, // 1=启用
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+
+          // 调用创建用户API
+          const result = await window.H5CmsAPI.AuthAPI.createUser(userData);
+
+          if (result.code === 200) {
+            setSuccessMessage('账号创建成功！');
+            // 清空表单
+            setUsername('');
+            setPassword('');
+            setConfirmPassword('');
+            setRealName('');
+            setPhone('');
+            setEmail('');
+            setRole('');
+            // 成功后调用回调函数
+            onSuccess();
+          }
+
+        } catch (error) {
+          setErrors([error.message]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] z-[9999] flex items-center justify-center">
+          <div className="absolute top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] bg-slate-900/40 backdrop-blur-xl"></div>
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto z-[10000]">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">创建新账号</h2>
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <Icon name="X" className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* 错误信息 */}
+                {errors.length > 0 && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    {errors.map((error, index) => (
+                      <div key={index} className="flex items-center text-red-600 text-sm">
+                        <Icon name="AlertCircle" className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 成功信息 */}
+                {successMessage && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center text-green-600">
+                      <Icon name="CheckCircle" className="w-5 h-5 mr-2" />
+                      {successMessage}
+                    </div>
+                  </div>
+                )}
+
+                {/* 账号输入 */}
+                <div>
+                  <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
+                    账号
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="User" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      id="username"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入账号"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                {/* 密码输入 */}
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+                    密码
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? (
+                          <Icon name="EyeOff" className="h-5 w-5" />
+                        ) : (
+                          <Icon name="Eye" className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 确认密码输入 */}
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-700 mb-2">
+                    确认密码
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请确认密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showConfirmPassword ? (
+                          <Icon name="EyeOff" className="h-5 w-5" />
+                        ) : (
+                          <Icon name="Eye" className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 姓名输入 */}
+                <div>
+                  <label htmlFor="realName" className="block text-sm font-medium text-slate-700 mb-2">
+                    姓名
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="User" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      id="realName"
+                      type="text"
+                      value={realName}
+                      onChange={(e) => setRealName(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入姓名"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                {/* 手机号输入 */}
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-2">
+                    手机号（可选）
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                      </svg>
+                    </div>
+                    <input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入手机号"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                {/* 邮箱输入 */}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                    邮箱（可选）
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-slate-400">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                      </svg>
+                    </div>
+                    <input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入邮箱"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+
+                {/* 角色选择 */}
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-slate-700 mb-2">
+                    角色
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="role"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={isLoading}
+                    >
+                      <option value="">请选择角色</option>
+                      <option value="1">超管</option>
+                      <option value="2">管理员</option>
+                      <option value="3">用户</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* 提交按钮 */}
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        创建中...
+                      </div>
+                    ) : (
+                      '创建账号'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 主组件 ---
+    function AccountApp() {
+      const [users, setUsers] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+      const [selectedUser, setSelectedUser] = useState(null);
+      const [authChecker, setAuthChecker] = useState(null);
+      const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+      const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+
+      // 获取用户信息
+      const userInfo = LoginManager?.getUserInfo() || { name: '用户', role: 'user' };
+      const username = userInfo.name || '用户';
+      const userRoleId = userInfo.roleId;
+      const isSuperAdmin = userInfo.roleId === 1 || userInfo.role === 'super_admin';
+
+      // 处理退出登录
+      const handleLogout = () => {
+        if (confirm("确定要退出吗？")) {
+          if (authChecker) {
+            authChecker.logout();
+          } else {
+            LoginManager.clearLoginInfo();
+            window.location.href = 'login.html';
+          }
+        }
+      };
+
+      // 处理修改密码成功
+      const handleChangePasswordSuccess = () => {
+        setIsChangePasswordModalOpen(false);
+      };
+
+      // 初始化权限检查器和加载数据
+      useEffect(() => {
+        const checker = window.pageAuthInstance || initPageAuth({
+          requireAuth: true,
+          allowedRoles: ['super_admin'],
+          redirectTo: 'login.html'
+        });
+        setAuthChecker(checker);
+
+        loadUsersData();
+      }, []);
+
+      const loadUsersData = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+
+          const result = await window.H5CmsAPI.AuthAPI.getUsersList({
+            page_size: 1000,
+            keyword: '',
+            role: ''
+          });
+
+          if (result.code === 200) {
+            setUsers(result.data.list || []);
+          }
+        } catch (err) {
+          setError(err.message);
+          console.error('加载用户数据失败:', err);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleCreateUserSuccess = () => {
+        loadUsersData();
+        setIsModalOpen(false);
+      };
+
+      const handleRefresh = () => {
+        loadUsersData();
+      };
+
+      const handleResetPassword = (user) => {
+        setSelectedUser(user);
+        setIsResetPasswordModalOpen(true);
+      };
+
+      const handleResetPasswordSuccess = () => {
+        setIsResetPasswordModalOpen(false);
+        setSelectedUser(null);
+        loadUsersData();
+      };
+
+      const handleToggleStatus = async (user) => {
+        const newStatus = user.status === 1 ? 2 : 1;
+        const action = newStatus === 1 ? '启用' : '禁用';
+
+        if (!confirm(`确定要${action}用户 "${user.username}" 吗？`)) {
+          return;
+        }
+
+        try {
+          await window.H5CmsAPI.AuthAPI.toggleUserStatus(user.id, newStatus);
+          loadUsersData();
+        } catch (error) {
+          alert(`${action}失败: ${error.message}`);
+        }
+      };
+
+      const menuItems = [
+        { id: 'home', label: '首页', icon: 'Home', path: 'homepage.html' },
+        { id: 'activity', label: '活动列表', icon: 'List', path: 'list.html' },
+        { id: 'account', label: '账号管理', icon: 'Users', path: 'account.html' }
+      ];
+
+      return (
+        <div className="min-h-screen bg-[#f1f5f9] flex flex-col font-sans">
+          {/* 顶部固定导航栏 */}
+          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-30 fixed top-0 left-0 right-0">
+            <div className="flex items-center space-x-4 w-1/3">
+              <h1 className="font-bold text-slate-800">活动管理系统</h1>
+            </div>
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-4 text-sm text-slate-600">
+                <span>{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</span>
+                <span className="font-mono">{new Date().toLocaleTimeString('zh-CN')}</span>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex pt-16 min-h-screen">
+            {/* 左侧侧边导航栏 */}
+            <aside className="w-48 bg-white border-r border-slate-200 shrink-0 shadow-[2px_0_8px_rgba(0,0,0,0.02)] fixed left-0 top-16 h-[calc(100vh-4rem)] overflow-y-auto z-10">
+              <nav className="py-2 h-full flex flex-col overflow-hidden">
+                {menuItems.map((item) => (
+                  <a
+                    key={item.id}
+                    href={item.path}
+                    className={`flex items-center px-6 py-3 text-sm font-medium transition-all
+                      ${item.id === 'account'
+                        ? 'text-blue-600 bg-blue-50 border-r-4 border-blue-600'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }
+                    `}
+                  >
+                    <Icon name={item.icon} className="w-5 h-5 mr-3" />
+                    {item.label}
+                  </a>
+                ))}
+                {/* 用户信息 - 底部 */}
+                <div className="mt-auto pt-0 border-t border-slate-200">
+                  <div
+                    className="relative"
+                    onClick={() => setIsUserMenuOpen(true)}
+                  >
+                    <div className="flex items-center px-6 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">
+                      <Icon name="User" className="w-5 h-5 flex-shrink-0" />
+                      <span className="ml-3 text-ellipsis overflow-hidden whitespace-nowrap">
+                        {username}
+                        {userRoleId && roleMap[userRoleId] && (
+                          <span className={`ml-2 text-xs ${roleColorMap[userRoleId] || 'bg-gray-100 text-gray-800'} px-1.5 py-0.5 rounded`}>
+                            {roleMap[userRoleId]}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </nav>
+            </aside>
+
+            {/* 主内容区域 */}
+            <main className="flex-1 p-6 ml-48 space-y-6">
+              {/* 页面标题 */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-800">账号管理</h1>
+                  <p className="text-slate-500 mt-1">管理系统用户账号</p>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                  <Icon name="Plus" className="w-4 h-4 mr-2" />
+                  创建账号
+                </button>
+              </div>
+
+              {/* 错误信息 */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <Icon name="AlertCircle" className="w-5 h-5 text-red-400 mr-2" />
+                    <span className="text-red-800">{error}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 用户表格 */}
+              <UserTable
+                users={users}
+                loading={loading}
+                onRefresh={handleRefresh}
+                onResetPassword={handleResetPassword}
+                onToggleStatus={handleToggleStatus}
+              />
+
+              {/* 创建账号弹窗 */}
+              <CreateUserModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={handleCreateUserSuccess}
+              />
+
+              {/* 重置密码弹窗 */}
+              <ResetPasswordModal
+                isOpen={isResetPasswordModalOpen}
+                onClose={() => {
+                  setIsResetPasswordModalOpen(false);
+                  setSelectedUser(null);
+                }}
+                user={selectedUser}
+                onSuccess={handleResetPasswordSuccess}
+              />
+
+              {/* 用户菜单弹窗 */}
+              <UserMenuModal
+                isOpen={isUserMenuOpen}
+                onClose={() => setIsUserMenuOpen(false)}
+                onChangePassword={() => setIsChangePasswordModalOpen(true)}
+                onLogout={handleLogout}
+              />
+
+              {/* 修改密码弹窗 */}
+              <ChangePasswordModal
+                isOpen={isChangePasswordModalOpen}
+                onClose={() => setIsChangePasswordModalOpen(false)}
+                onSuccess={handleChangePasswordSuccess}
+              />
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    // 渲染应用
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AccountApp />);
+  </script>
+</body>
+</html>

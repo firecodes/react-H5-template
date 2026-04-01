@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>加载中...</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- 引入 Google Fonts 支持衬线字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- 引入 Supabase 客户端和API封装 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 配置文件 -->
+  <script src="js/config.js"></script>
+  <!-- 配置加载器 -->
+  <script src="js/config-loader.js"></script>
+  <script src="js/supabase_api.js"></script>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 全局字体定义，确保移动端正确识别 */
+    html, body {
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    /* 衬线字体类 */
+    .font-serif-cn {
+      font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "KaiTi", "Droid Serif", "Noto Serif", "Times New Roman", serif !important;
+    }
+
+    /* 无衬线字体类 */
+    .font-sans-cn {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    }
+
+    /* 滚动条样式 - 与canvas.html完全一致 */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #9ca3af; }
+
+    /* 预览模式下隐藏滚动条 */
+    [style*="scrollbarWidth"]::-webkit-scrollbar {
+      display: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      background-color: #000;
+    }
+
+    @media (max-width: 640px) {
+      html, body, #root {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+    }
+
+    /* 富文本中的图片圆角 - 只针对使用 dangerouslySetInnerHTML 的富文本内容 */
+    .min-h-\[24px\].outline-none img {
+      border-radius: 8px !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Markdown 到 HTML 简单解析器 - 与canvas.html保持一致
+    const markdownToHtml = (markdown) => {
+      let result = '';
+      const lines = markdown.split('\n');
+      let inCodeBlock = false;
+      let codeContent = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // 检查是否进入或退出代码块
+        if (line.startsWith('```')) {
+          if (inCodeBlock) {
+            // 退出代码块 - 渲染代码块
+            const escapedContent = codeContent.join('\n')
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
+
+            result += `<pre style="background: #f8fafc; padding: 1rem; border-radius: 0.75rem; margin: 1rem 0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 0.875rem; line-height: 1.7; color: #475569; border: 1px solid #e2e8f0; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; max-width: 100%; box-sizing: border-box;">${escapedContent}</pre>`;
+
+            codeContent = [];
+            inCodeBlock = false;
+          } else {
+            // 进入代码块
+            inCodeBlock = true;
+          }
+          continue;
+        }
+
+        if (inCodeBlock) {
+          // 在代码块内，直接保存内容
+          codeContent.push(line);
+          continue;
+        }
+
+        // 不在代码块内，正常处理
+        let processedLine = line;
+
+        // 标题
+        if (processedLine.startsWith('### ')) {
+          processedLine = `<h3 style="font-size: 18px; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1e293b; word-wrap: break-word; overflow-wrap: break-word;">${processedLine.substring(4)}</h3>`;
+        } else if (processedLine.startsWith('## ')) {
+          processedLine = `<h2 style="font-size: 22px; font-weight: 700; margin-top: 1.75rem; margin-bottom: 0.875rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; word-wrap: break-word; overflow-wrap: break-word;">${processedLine.substring(3)}</h2>`;
+        } else if (processedLine.startsWith('# ')) {
+          processedLine = `<h1 style="font-size: 26px; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.75rem; word-wrap: break-word; overflow-wrap: break-word;">${processedLine.substring(2)}</h1>`;
+        }
+        // 引用
+        else if (processedLine.startsWith('> ')) {
+          processedLine = `<blockquote style="border-left: 3px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; color: #64748b; font-style: italic; background: #f1f5f9; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; border-radius: 0 0.5rem 0.5rem 0; word-wrap: break-word;">${processedLine.substring(2)}</blockquote>`;
+        }
+        // 无序列表
+        else if (processedLine.startsWith('- ') || processedLine.startsWith('* ')) {
+          let content = processedLine.substring(2);
+          // 粗体
+          content = content
+            .replace(/\*\*(.*?)\*\*/gim, '<strong style="font-weight: 600; color: #1e293b;">$1</strong>')
+            .replace(/__(.*?)__/gim, '<strong style="font-weight: 600; color: #1e293b;">$1</strong>');
+          // 斜体
+          content = content
+            .replace(/\*(.*?)\*/gim, '<em style="font-style: italic;">$1</em>')
+            .replace(/_(.*?)_/gim, '<em style="font-style: italic;">$1</em>');
+          // 链接
+          content = content
+            .replace(/\[([^\]]*)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank" style="color: #2563eb; text-decoration: underline; text-underline-offset: 2px; word-wrap: break-word; overflow-wrap: break-word;">$1</a>');
+          // 行内代码
+          content = content
+            .replace(/`([^`]*?)`/gim, '<code style="background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.375rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 0.875em; color: #dc2626; word-wrap: break-word;">$1</code>');
+          // 图片
+          content = content
+            .replace(/!\[([^\]]*)\]\(([^\)]+)\)/gim, '<img src="$2" alt="$1" style="max-width: 100%; width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: block; box-sizing: border-box; overflow: hidden;">');
+          processedLine = `<li style="margin-left: 1.5rem; list-style-type: disc; margin-top: 0.25rem; margin-bottom: 0.25rem; color: #475569; word-wrap: break-word;">${content}</li>`;
+        }
+        // 有序列表
+        else if (/^\d+\. /.test(processedLine)) {
+          let content = processedLine.replace(/^\d+\. /, '');
+          // 粗体
+          content = content
+            .replace(/\*\*(.*?)\*\*/gim, '<strong style="font-weight: 600; color: #1e293b;">$1</strong>')
+            .replace(/__(.*?)__/gim, '<strong style="font-weight: 600; color: #1e293b;">$1</strong>');
+          // 斜体
+          content = content
+            .replace(/\*(.*?)\*/gim, '<em style="font-style: italic;">$1</em>')
+            .replace(/_(.*?)_/gim, '<em style="font-style: italic;">$1</em>');
+          // 链接
+          content = content
+            .replace(/\[([^\]]*)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank" style="color: #2563eb; text-decoration: underline; text-underline-offset: 2px; word-wrap: break-word; overflow-wrap: break-word;">$1</a>');
+          // 行内代码
+          content = content
+            .replace(/`([^`]*?)`/gim, '<code style="background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.375rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace; font-size: 0.875em; color: #dc2626; word-wrap: break-word;">$1</code>');
+          // 图片
+          content = content
+            .replace(/!\[([^\]]*)\]\(([^\)]+)\)/gim, '<img src="$2" alt="$1" style="max-width: 100%; width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: block; box-sizing: border-box; overflow: hidden;">');
+          processedLine = `<li style="margin-left: 1.5rem; list-style-type: decimal; margin-top: 0.25rem; margin-bottom: 0.25rem; color: #475569; word-wrap: break-word;">${content}</li>`;
+        }
+        // 分隔线
+        else if (processedLine.startsWith('---')) {
+          processedLine = `<hr style="border: none; border-top: 1px solid #e2e8f0; margin: 1.5rem 0;">`;
+        }
+        // 普通段落
+        else if (processedLine.trim() !== '') {
+          // 粗体
+          processedLine = processedLine
+            .replace(/\*\*(.*?)\*\*/gim, '<strong style="font-weight: 600; color: #1e293b;">$1</strong>')
+            .replace(/__(.*?)__/gim, '<strong style="font-weight: 600; color: #1e293b;">$1</strong>');
+          // 斜体
+          processedLine = processedLine
+            .replace(/\*(.*?)\*/gim, '<em style="font-style: italic;">$1</em>')
+            .replace(/_(.*?)_/gim, '<em style="font-style: italic;">$1</em>');
+          // 链接
+          processedLine = processedLine
+            .replace(/\[([^\]]*)\]\(([^\)]+)\)/gim, '<a href="$2" target="_blank" style="color: #2563eb; text-decoration: underline; text-underline-offset: 2px; word-wrap: break-word; overflow-wrap: break-word;">$1</a>');
+          // 行内代码
+          processedLine = processedLine
+            .replace(/`([^`]*?)`/gim, '<code style="background: #f1f5f9; padding: 0.125rem 0.375rem; border-radius: 0.375rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.875em; color: #dc2626; word-wrap: break-word;">$1</code>');
+          // 图片
+          processedLine = processedLine
+            .replace(/!\[([^\]]*)\]\(([^\)]+)\)/gim, '<img src="$2" alt="$1" style="max-width: 100%; width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); display: block; box-sizing: border-box; overflow: hidden;">');
+
+          processedLine = `<p style="margin: 0.5rem 0; line-height: 1.8; color: #475569; word-wrap: break-word;">${processedLine}</p>`;
+        }
+
+        result += processedLine;
+      }
+
+      return result;
+    };
+
+    const Icon = ({ name, className, style, fill }) => {
+      const icons = {
+        Home: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }),
+          React.createElement("polyline", { points: "9 22 9 12 15 12 15 22" })
+        ),
+        List: React.createElement(React.Fragment, null,
+          React.createElement("line", { x1: "8", x2: "21", y1: "6", y2: "6" }),
+          React.createElement("line", { x1: "8", x2: "21", y1: "12", y2: "12" }),
+          React.createElement("line", { x1: "8", x2: "21", y1: "18", y2: "18" })
+        ),
+        ChevronDown: React.createElement("polyline", { points: "6 9 12 15 18 9" }),
+        ChevronLeft: React.createElement("polyline", { points: "15 18 9 12 15 6" }),
+        ChevronRight: React.createElement("polyline", { points: "9 18 15 12 9 6" }),
+        Image: React.createElement(React.Fragment, null,
+          React.createElement("rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2" }),
+          React.createElement("circle", { cx: "9", cy: "9", r: "2" })
+        ),
+        Edit: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" }),
+          React.createElement("path", { d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" })
+        ),
+        Layout: React.createElement(React.Fragment, null,
+          React.createElement("rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2" }),
+          React.createElement("line", { x1: "3", x2: "21", y1: "9", y2: "9" }),
+          React.createElement("line", { x1: "9", x2: "9", y1: "21", y2: "9" })
+        ),
+        BarChart: React.createElement(React.Fragment, null,
+          React.createElement("line", { x1: "12", x2: "12", y1: "20", y2: "10" }),
+          React.createElement("line", { x1: "18", x2: "18", y1: "20", y2: "4" }),
+          React.createElement("line", { x1: "6", x2: "6", y1: "20", y2: "16" })
+        ),
+        Sliders: React.createElement(React.Fragment, null,
+          React.createElement("line", { x1: "4", x2: "4", y1: "21", y2: "14" }),
+          React.createElement("line", { x1: "4", x2: "4", y1: "10", y2: "3" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "21", y2: "12" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "8", y2: "3" }),
+          React.createElement("line", { x1: "20", x2: "20", y1: "21", y2: "16" }),
+          React.createElement("line", { x1: "20", x2: "20", y1: "12", y2: "3" }),
+          React.createElement("line", { x1: "2", x2: "6", y1: "14", y2: "14" }),
+          React.createElement("line", { x1: "10", x2: "14", y1: "8", y2: "8" }),
+          React.createElement("line", { x1: "18", x2: "22", y1: "16", y2: "16" })
+        ),
+        Video: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "m22 8-6 4 6 4V8Z" }),
+          React.createElement("rect", { width: "14", height: "14", x: "2", y: "3", rx: "2", ry: "2" })
+        ),
+        Calendar: React.createElement(React.Fragment, null,
+          React.createElement("rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", ry: "2" }),
+          React.createElement("line", { x1: "16", x2: "8", y1: "2", y2: "2" }),
+          React.createElement("line", { x1: "3", x2: "21", y1: "10", y2: "10" })
+        ),
+        Clock: React.createElement(React.Fragment, null,
+          React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+          React.createElement("polyline", { points: "12 6 12 12 16 14" })
+        ),
+        MapPin: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" }),
+          React.createElement("circle", { cx: "12", cy: "10", r: "3" })
+        ),
+        Phone: React.createElement("polyline", { points: "22 16 18 12 22 8" }),
+        User: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }),
+          React.createElement("circle", { cx: "12", cy: "7", r: "4" })
+        ),
+        Upload: React.createElement("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+        Plus: React.createElement("path", { d: "M12 5v14M5 12h14" }),
+        Trash: React.createElement("polyline", { points: "3 6 5 6 21 6" }),
+        Star: React.createElement("polygon", { points: "12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" }),
+        MoveUp: React.createElement(React.Fragment, null,
+          React.createElement("polyline", { points: "18 11 12 5 6 11" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "20", y2: "5" })
+        ),
+        MoveDown: React.createElement(React.Fragment, null,
+          React.createElement("polyline", { points: "6 13 12 19 18 13" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "4", y2: "19" })
+        )
+      };
+
+      if (!icons[name]) return null;
+
+      return React.createElement("svg", {
+        xmlns: "http://www.w3.org/2000/svg",
+        width: "24",
+        height: "24",
+        viewBox: "0 0 24 24",
+        fill: fill,
+        stroke: "currentColor",
+        strokeWidth: "2",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        className: className,
+        style: style
+      }, icons[name]);
+    };
+
+    // 解析组件的实际尺寸（与编辑页面完全一致）
+    const parseSize = (size, isWidth = true) => {
+      if (!size) return isWidth ? 390 : 100;
+      if (typeof size === 'number') return size;
+      if (size.endsWith('%')) {
+        const percent = parseFloat(size);
+        return isWidth ? (percent / 100) * 390 : (percent / 100) * 745; // 745 是默认页面高度
+      }
+      if (size.endsWith('px')) return parseFloat(size);
+      return parseFloat(size) || (isWidth ? 390 : 100);
+    };
+
+    const generateId = () => Math.random().toString(36).substr(2, 9);
+
+    const parseUrlParams = () => {
+      const hash = window.location.hash;
+      if (!hash) return null;
+
+      try {
+        const path = hash.slice(1);
+        console.log('解析hash路径:', path);
+
+        // 新格式: #活动ID/page-数字
+        const pathParts = path.split('/');
+        if (pathParts.length === 2) {
+          const activityId = pathParts[0];
+          const pagePath = pathParts[1];
+
+          // 从localStorage获取数据
+          const storageKey = `h5-cms-activity-${activityId}`;
+          const storedData = localStorage.getItem(storageKey);
+
+          if (!storedData) {
+            console.error('未找到活动数据:', activityId);
+            return null;
+          }
+
+          const data = JSON.parse(storedData);
+
+          // 解析页面信息
+          let currentPageIndex = 0;
+          if (pagePath) {
+            // 首先尝试通过页面ID找到对应的页面
+            const pageIndex = data.pages.findIndex(page => page.id === pagePath);
+            if (pageIndex !== -1) {
+              currentPageIndex = pageIndex;
+            } else if (pagePath.startsWith('page-')) {
+              // 如果通过ID没找到，尝试通过页码找到（兼容旧格式）
+              const pageNumber = parseInt(pagePath.replace('page-', ''));
+              currentPageIndex = data.pages.findIndex(page => page.pageNumber === pageNumber) || 0;
+            }
+            console.log('找到页面索引:', currentPageIndex);
+          }
+
+          return {
+            ...data,
+            currentPageIndex: currentPageIndex
+          };
+        }
+
+        // 兼容旧格式
+        const dataStr = hash.slice(1);
+        const decodedData = decodeURIComponent(dataStr);
+        const parsed = JSON.parse(decodedData);
+        return parsed;
+      } catch (error) {
+        console.error('解析URL数据失败:', error);
+        return null;
+      }
+    };
+
+    const App = () => {
+      const [data, setData] = useState(null);
+      const [canvasModes, setCanvasModes] = useState({});
+      const [isLoading, setIsLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [formData, setFormData] = useState({});
+      const [radioStates, setRadioStates] = useState({});
+      const [checkboxStates, setCheckboxStates] = useState({});
+      const [ratingStates, setRatingStates] = useState({});
+      const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
+      // 画布容器ref和当前宽度
+      const canvasContainerRef = useRef(null);
+      const [canvasWidth, setCanvasWidth] = useState(390); // 默认宽度
+
+      // 从URL解析活动ID
+      const parseActivityIdFromUrl = () => {
+        // 支持两种格式：?id=xxx 或者 #xxx/page-1
+        const params = new URLSearchParams(window.location.search);
+        const idFromQuery = params.get('id');
+        if (idFromQuery) return { id: idFromQuery, pageId: null };
+
+        const hash = window.location.hash;
+        if (hash && hash.length > 1) {
+          const parts = hash.slice(1).split('/');
+          if (parts[0] && parts[0].length >= 1) {
+            return {
+              id: parts[0],
+              pageId: parts.length > 1 ? parts[1] : null
+            };
+          }
+        }
+        return null;
+      };
+
+      // 加载活动数据
+      const loadActivityData = async (activityIdentifier, pageId) => {
+        try {
+          if (!window.H5CmsAPI) {
+            throw new Error('API未加载');
+          }
+
+          let activity = null;
+          let error = null;
+
+          // 先尝试按自定义activity_id查找
+          try {
+            const result = await H5CmsAPI.ActivityAPI.getByActivityId(activityIdentifier);
+            activity = result.data;
+          } catch (e) {
+            // 如果按activity_id查找失败，再尝试按UUID主键查找
+            const result = await H5CmsAPI.ActivityAPI.getDetail(activityIdentifier);
+            activity = result.data;
+          }
+
+          if (!activity) {
+            throw new Error('活动不存在');
+          }
+
+          console.log('加载活动成功:', activity);
+
+          // 设置浏览器标签标题为活动名称
+          if (activity.name && activity.name.trim()) {
+            document.title = activity.name;
+          }
+
+          if (activity.page_config && activity.page_config.pages && activity.page_config.pageComponents) {
+            // 转换数据结构，确保 settings 对象包含所有配置
+            // 确保每个页面都有 bgAttachment 属性，默认 'fill'
+            const pagesWithAttachment = activity.page_config.pages.map(page => ({
+              ...page,
+              bgAttachment: page.bgAttachment || 'fill'
+            }));
+
+            const dataWithSettings = {
+              ...activity.page_config,
+              pages: pagesWithAttachment,
+              settings: {
+                componentPadding: activity.page_config.componentPadding,
+                componentGap: activity.page_config.componentGap,
+                enableGridSnap: activity.page_config.enableGridSnap,
+                pageFontSize: activity.page_config.pageFontSize
+              }
+            };
+            setData(dataWithSettings);
+            // 加载canvasModes
+            if (activity.page_config.canvasModes) {
+              setCanvasModes(activity.page_config.canvasModes);
+            }
+
+            // 如果有指定页面ID，找到对应的索引
+            if (pageId && activity.page_config.pages) {
+              const pageIndex = activity.page_config.pages.findIndex(p => p.id === pageId);
+              if (pageIndex !== -1) {
+                setCurrentPageIndex(pageIndex);
+              }
+            }
+
+            // 增加浏览量统计
+            await H5CmsAPI.ActivityAPI.update(activity.id, {
+              view_count: (activity.view_count || 0) + 1
+            });
+
+          } else {
+            throw new Error('活动页面配置不存在');
+          }
+
+        } catch (err) {
+          console.error('加载活动失败:', err);
+          // 尝试使用旧的URL参数模式（预览模式）
+          console.log('尝试使用预览模式加载...');
+          const urlData = parseUrlParams();
+          if (urlData && urlData.pages && Array.isArray(urlData.pages) && urlData.pageComponents) {
+            console.log('预览模式加载成功');
+            // 确保每个页面都有 bgAttachment 属性
+            const pagesWithAttachment = urlData.pages.map(page => ({
+              ...page,
+              bgAttachment: page.bgAttachment || 'fill'
+            }));
+            setData({
+              ...urlData,
+              pages: pagesWithAttachment
+            });
+            if (urlData.currentPageIndex !== undefined) {
+              setCurrentPageIndex(urlData.currentPageIndex);
+            }
+          } else {
+            setError('活动加载失败: ' + err.message);
+          }
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      // 监听页面变化，自动滚动到顶部
+      useEffect(() => {
+        // 先尝试使用滚动容器滚动到顶部
+        if (canvasContainerRef.current) {
+          canvasContainerRef.current.scrollTo(0, 0);
+        }
+        // 同时确保整个窗口也滚动到顶部
+        window.scrollTo(0, 0);
+      }, [currentPageIndex]);
+
+      // 监听窗口大小变化，更新画布宽度
+      useEffect(() => {
+        const updateCanvasWidth = () => {
+          if (canvasContainerRef.current) {
+            const container = canvasContainerRef.current;
+            const containerRect = container.getBoundingClientRect();
+            setCanvasWidth(containerRect.width);
+            console.log('画布实际宽度:', containerRect.width);
+          }
+        };
+
+        // 初始计算
+        if (canvasContainerRef.current) {
+          updateCanvasWidth();
+        }
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', updateCanvasWidth);
+
+        // 也在组件加载后重新计算
+        const timeoutId = setTimeout(updateCanvasWidth, 100);
+
+        return () => {
+          window.removeEventListener('resize', updateCanvasWidth);
+          clearTimeout(timeoutId);
+        };
+      }, []);
+
+      useEffect(() => {
+        console.log('开始加载活动');
+        const activityInfo = parseActivityIdFromUrl();
+        if (activityInfo) {
+          loadActivityData(activityInfo.id, activityInfo.pageId);
+        } else {
+          // 尝试使用旧的URL参数模式
+          const urlData = parseUrlParams();
+          if (urlData && urlData.pages && Array.isArray(urlData.pages) && urlData.pageComponents) {
+            console.log('使用预览模式加载');
+            setData(urlData);
+            if (urlData.currentPageIndex !== undefined) {
+              setCurrentPageIndex(urlData.currentPageIndex);
+            }
+            setIsLoading(false);
+          } else {
+            setError('缺少活动ID参数');
+            setIsLoading(false);
+          }
+        }
+      }, []);
+
+      // 处理表单输入变化
+      const handleInputChange = (compId, value) => {
+        setFormData(prev => ({
+          ...prev,
+          [compId]: value
+        }));
+      };
+
+      // 处理单选按钮变化
+      const handleRadioChange = (compId, optionIndex) => {
+        setRadioStates(prev => ({
+          ...prev,
+          [compId]: optionIndex
+        }));
+      };
+
+      // 处理复选框变化
+      const handleCheckboxChange = (compId, optionIndex) => {
+        setCheckboxStates(prev => {
+          const current = prev[compId] || [];
+          if (current.includes(optionIndex)) {
+            return {
+              ...prev,
+              [compId]: current.filter(i => i !== optionIndex)
+            };
+          } else {
+            return {
+              ...prev,
+              [compId]: [...current, optionIndex]
+            };
+          }
+        });
+      };
+
+      // 处理评分变化
+      const handleRatingChange = (compId, value) => {
+        setRatingStates(prev => ({
+          ...prev,
+          [compId]: value
+        }));
+        // 同时更新到表单数据中，方便提交时获取
+        handleInputChange(compId, value);
+      };
+
+      // 处理按钮点击
+      const handleButtonClick = (e, comp) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        console.log('点击按钮信息:', comp);
+        console.log('页面列表:', data.pages);
+
+        switch (comp.functionType) {
+          case 'page':
+            if (comp.targetPage) {
+              console.log('目标页面ID:', comp.targetPage);
+              const pageIndex = data.pages.findIndex(p => p.id === comp.targetPage);
+              console.log('找到的页面索引:', pageIndex);
+
+              if (pageIndex !== -1) {
+                setCurrentPageIndex(pageIndex);
+                console.log('页面跳转成功');
+              } else {
+                console.warn('未找到页面:', comp.targetPage);
+                // 尝试兼容旧格式的page-数字
+                if (comp.targetPage.startsWith('page-')) {
+                  const pageNumber = parseInt(comp.targetPage.replace('page-', ''));
+                  const numIndex = data.pages.findIndex(page => page.pageNumber === pageNumber);
+                  if (numIndex !== -1) {
+                    setCurrentPageIndex(numIndex);
+                    console.log('通过页码找到页面:', numIndex);
+                  }
+                }
+              }
+            }
+            break;
+          case 'link':
+            if (comp.link) {
+              window.open(comp.link, '_blank');
+            }
+            break;
+          case 'submit':
+            alert('表单已提交！数据：' + JSON.stringify(formData));
+            break;
+          default:
+            alert(`按钮功能：${comp.functionType}`);
+            break;
+        }
+      };
+
+      const renderComponent = (comp) => {
+        switch(comp.type) {
+          case 'text':
+            return React.createElement('div', {
+              style: {
+                fontSize: comp.fontSize,
+                color: comp.color,
+                textAlign: comp.align || 'left',
+                wordBreak: 'break-all',
+                lineHeight: 1.6,
+                fontWeight: comp.bold ? 'bold' : 'normal',
+                fontFamily: comp.fontFamily === 'serif' ? '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "KaiTi", "Droid Serif", "Noto Serif", "Times New Roman", serif' : 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+              },
+              className: 'w-full h-full min-h-[24px] outline-none ' + (comp.fontFamily === 'serif' ? 'font-serif-cn' : 'font-sans-cn')
+            }, comp.content);
+
+          case 'image':
+            // 处理图片组件的 images 数组
+            const imgList = (comp.images && comp.images.length > 0) ? [...comp.images] : [{ id: 'default-img', url: '', link: '' }];
+            const layoutNum = parseInt(comp.layout);
+            const isMatrix = !isNaN(layoutNum) && comp.layout !== 'carousel';
+
+            if (isMatrix && imgList.length < layoutNum) {
+               for (let i = imgList.length; i < layoutNum; i++) {
+                  imgList.push({ id: `dummy-${i}`, url: '', isDummy: true });
+               }
+            }
+
+            let imgContainerClass = "w-full h-full";
+            let imgItemClass = "w-full h-full relative overflow-hidden flex flex-col items-center justify-center bg-slate-100/80 border";
+            let imgItemStyle = { borderRadius: comp.borderRadius };
+            let imgContainerStyle = {};
+
+            if (isMatrix) {
+              imgContainerClass = `w-full h-full grid`;
+              imgContainerStyle = { gridTemplateColumns: `repeat(${layoutNum}, minmax(0, 1fr))`, gap: `${comp.itemGap ?? 8}px` };
+            } else if (comp.layout === 'carousel') {
+              imgContainerClass = "w-full h-full flex overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-1";
+              imgContainerStyle = { gap: `${comp.itemGap ?? 8}px` };
+              imgItemClass = "h-full shrink-0 snap-center relative overflow-hidden flex flex-col items-center justify-center bg-slate-100/80 border";
+              imgItemStyle.width = `${comp.sliderItemWidth || 85}%`;
+            }
+
+            return React.createElement('div', { className: imgContainerClass, style: imgContainerStyle },
+              imgList.map((img, idx) => {
+                if (img.isDummy) return null;
+
+                const imgElement = img.url ?
+                    React.createElement('img', {
+                      src: img.url,
+                      className: 'absolute inset-0 w-full h-full object-cover',
+                      style: { display: 'block' },
+                      draggable: 'false'
+                    }) :
+                    React.createElement(React.Fragment, null,
+                      React.createElement(Icon, { name: 'Image', className: 'w-6 h-6 opacity-50' }),
+                      '添加图片'
+                    );
+
+                // 如果有链接，添加点击跳转功能
+                const imgWrapperProps = img.link ? {
+                  onClick: (e) => {
+                    e.preventDefault();
+                    window.open(img.link, '_blank');
+                  },
+                  className: `${imgItemClass} ${!img.url ? ((comp.height === 'auto' || !comp.height) ? 'min-h-[120px] ' : '') + 'border-dashed border-slate-300 text-slate-400 hover:bg-slate-100 transition-colors' : 'border-solid border-slate-200'} ${img.url && img.link ? 'cursor-pointer' : ''}`,
+                  style: imgItemStyle
+                } : {
+                  className: `${imgItemClass} ${!img.url ? ((comp.height === 'auto' || !comp.height) ? 'min-h-[120px] ' : '') + 'border-dashed border-slate-300 text-slate-400 hover:bg-slate-100 transition-colors' : 'border-solid border-slate-200'}`,
+                  style: imgItemStyle
+                };
+
+                return React.createElement('div', { key: img.id || idx, ...imgWrapperProps }, imgElement);
+              })
+            );
+
+          case 'button':
+            return React.createElement('button', {
+              style: {
+                backgroundColor: comp.bgColor,
+                color: comp.color,
+                borderRadius: comp.borderRadius || '8px',
+                width: '100%',
+                height: '100%',
+                fontSize: comp.fontSize || '16px',
+                fontWeight: '600',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.2)'
+              },
+              className: 'transition-transform active:scale-95',
+              onClick: (e) => handleButtonClick(e, comp)
+            }, comp.text);
+
+          case 'carousel':
+            return React.createElement('div', {
+              className: 'w-full h-full bg-slate-100/80 border border-slate-200 flex flex-col items-center justify-center text-slate-400 text-xs shadow-sm',
+              style: { borderRadius: comp.borderRadius || '8px' }
+            },
+              React.createElement(Icon, { name: 'Sliders', className: 'w-6 h-6 mb-1 opacity-50' }),
+              '轮播图区域'
+            );
+
+          case 'video':
+            return React.createElement('div', {
+              className: 'w-full h-full bg-slate-900 border border-slate-800 flex flex-col items-center justify-center text-slate-300 text-xs shadow-lg',
+              style: { borderRadius: comp.borderRadius || '8px' }
+            },
+              React.createElement(Icon, { name: 'Video', className: 'w-8 h-8 mb-2 opacity-80' }),
+              '视频播放器'
+            );
+
+          case 'date':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('input', {
+                type: 'date',
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm',
+                style: { width: '100% !important', maxWidth: '100%' },
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'time':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('input', {
+                type: 'time',
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm',
+                style: { width: '100% !important', maxWidth: '100%' },
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'address':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('input', {
+                type: 'text',
+                placeholder: comp.placeholder,
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm',
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'phone':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('input', {
+                type: 'tel',
+                placeholder: comp.placeholder,
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm',
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'idcard':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('input', {
+                type: 'text',
+                placeholder: comp.placeholder,
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm',
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'upload':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('label', {
+                className: 'w-full bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl px-4 py-6 text-slate-400 text-sm shadow-sm flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 transition-colors'
+              },
+                React.createElement(Icon, { name: 'Upload', className: 'w-8 h-8 mb-2 opacity-50' }),
+                React.createElement('span', null, formData[comp.id] || comp.placeholder),
+                React.createElement('input', {
+                  type: 'file',
+                  className: 'hidden',
+                  onChange: (e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleInputChange(comp.id, e.target.files[0].name);
+                    }
+                  }
+                })
+              )
+            );
+
+          case 'richtext':
+            const displayContent = comp.format === 'markdown'
+              ? markdownToHtml(comp.content || '')
+              : (comp.content || '');
+            return React.createElement('div', {
+              style: {
+                fontSize: comp.fontSize,
+                color: comp.color,
+                textAlign: comp.align || 'left',
+                wordBreak: 'break-word',
+                lineHeight: 1.6,
+                overflowWrap: 'break-word',
+                maxWidth: '100%',
+                width: '100%',
+                overflow: 'hidden',
+                boxSizing: 'border-box',
+                fontFamily: comp.fontFamily === 'serif' ? '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "KaiTi", "Droid Serif", "Noto Serif", "Times New Roman", serif' : 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                backgroundColor: comp.bgColor || 'transparent',
+                borderColor: comp.borderColor || 'transparent',
+                borderWidth: comp.borderWidth ? `${comp.borderWidth}px` : '0px',
+                borderStyle: comp.borderWidth ? 'solid' : 'none',
+                borderRadius: comp.borderRadius ? `${comp.borderRadius}px` : '0px',
+                paddingTop: comp.paddingTop !== undefined ? `${comp.paddingTop}px` : (comp.borderWidth ? `${Math.max(4, comp.borderWidth * 2)}px` : '0px'),
+                paddingBottom: comp.paddingBottom !== undefined ? `${comp.paddingBottom}px` : (comp.borderWidth ? `${Math.max(4, comp.borderWidth * 2)}px` : '0px'),
+                paddingLeft: comp.paddingLeft !== undefined ? `${comp.paddingLeft}px` : (comp.borderWidth ? `${Math.max(4, comp.borderWidth * 2)}px` : '4px'),
+                paddingRight: comp.paddingRight !== undefined ? `${comp.paddingRight}px` : (comp.borderWidth ? `${Math.max(4, comp.borderWidth * 2)}px` : '4px')
+              },
+              className: 'w-full h-full min-h-[24px] outline-none ' + (comp.fontFamily === 'serif' ? 'font-serif-cn' : 'font-sans-cn'),
+              dangerouslySetInnerHTML: { __html: displayContent }
+            });
+
+          case 'input':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('input', {
+                type: 'text',
+                placeholder: comp.placeholder,
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm',
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'textarea':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-start box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('textarea', {
+                placeholder: comp.placeholder,
+                className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm resize-none',
+                style: { minHeight: `${(comp.rows || 4) * 24}px` },
+                value: formData[comp.id] || '',
+                onChange: (e) => handleInputChange(comp.id, e.target.value)
+              })
+            );
+
+          case 'radio':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('div', { className: 'space-y-2' },
+                (comp.options || []).map((opt, idx) => React.createElement('div', {
+                  key: idx,
+                  className: 'flex items-center w-full box-border bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm shadow-sm cursor-pointer hover:bg-slate-50 transition-colors',
+                  onClick: () => handleRadioChange(comp.id, idx)
+                },
+                  React.createElement('input', {
+                    type: 'radio',
+                    checked: radioStates[comp.id] === idx,
+                    onChange: () => handleRadioChange(comp.id, idx),
+                    className: 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer'
+                  }),
+                  React.createElement('label', { className: 'ml-2 block text-sm text-gray-700 flex-1 cursor-pointer' }, opt)
+                ))
+              )
+            );
+
+          case 'checkbox':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('div', { className: 'space-y-2' },
+                (comp.options || []).map((opt, idx) => React.createElement('div', {
+                  key: idx,
+                  className: 'flex items-center w-full box-border bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm shadow-sm cursor-pointer hover:bg-slate-50 transition-colors',
+                  onClick: () => handleCheckboxChange(comp.id, idx)
+                },
+                  React.createElement('input', {
+                    type: 'checkbox',
+                    checked: (checkboxStates[comp.id] || []).includes(idx),
+                    onChange: () => handleCheckboxChange(comp.id, idx),
+                    className: 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer'
+                  }),
+                  React.createElement('label', { className: 'ml-2 block text-sm text-gray-700 flex-1 cursor-pointer' }, opt)
+                ))
+              )
+            );
+
+          case 'select':
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('div', { className: 'relative' },
+                React.createElement('select', {
+                  className: 'w-full min-w-0 box-border bg-white border border-slate-200 rounded-xl px-4 py-3.5 text-slate-700 text-sm shadow-sm cursor-pointer appearance-none',
+                  style: { width: '100% !important', maxWidth: '100%' },
+                  value: formData[comp.id] || '',
+                  onChange: (e) => handleInputChange(comp.id, e.target.value)
+                },
+                  React.createElement('option', { value: '' }, '请选择'),
+                  (comp.options || []).map((opt, idx) =>
+                    React.createElement('option', { key: idx, value: opt }, opt)
+                  )
+                ),
+                React.createElement('div', {
+                  className: 'absolute inset-y-0 right-4 flex items-center pointer-events-none',
+                  style: { pointerEvents: 'none' }
+                },
+                  React.createElement(Icon, {
+                    name: 'ChevronDown',
+                    style: {
+                      width: '20px',
+                      height: '20px',
+                      color: '#64748b'
+                    },
+                    className: 'shrink-0'
+                  })
+                )
+              )
+            );
+
+          case 'rating':
+            const safeMaxStars = Math.max(1, Math.min(20, Number(comp.maxStars) || 5));
+            const currentRating = Number(ratingStates[comp.id] ?? comp.value ?? 0);
+            return React.createElement('div', { className: 'w-full h-full flex flex-col justify-center box-border' },
+              React.createElement('label', { className: 'block text-[13px] font-bold text-slate-700 mb-2 pl-1' },
+                [comp.label, comp.required ? React.createElement('span', { className: 'text-red-500 ml-1' }, '*') : null]
+              ),
+              comp.subLabel && React.createElement('div', {
+                style: { fontSize: '12px', color: '#6b7280' },
+                className: 'pl-1 mb-1'
+              }, comp.subLabel),
+              React.createElement('div', {
+                className: 'flex items-center bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex-wrap',
+                style: { gap: (comp.iconGap ?? 6) + 'px' }
+              },
+                Array.from({ length: safeMaxStars }).map((_, i) =>
+                  React.createElement('div', {
+                    key: i,
+                    onClick: () => handleRatingChange(comp.id, i + 1),
+                    className: 'cursor-pointer transition-transform hover:scale-110',
+                    style: { display: 'inline-flex' }
+                  },
+                    React.createElement(Icon, {
+                      name: comp.iconType || 'Star',
+                      style: {
+                        width: (comp.iconSize || 24) + 'px',
+                        height: (comp.iconSize || 24) + 'px',
+                        color: i < currentRating ? (comp.activeColor || '#facc15') : '#cbd5e1'
+                      },
+                      fill: i < currentRating ? (comp.activeColor || '#facc15') : 'none',
+                      className: 'shrink-0 transition-colors'
+                    })
+                  )
+                )
+              )
+            );
+
+          case 'divider':
+            return React.createElement('div', {
+              style: {
+                height: comp.height || '1px',
+                backgroundColor: comp.color || '#e5e7eb',
+                margin: `${comp.marginTop || 0}px 0 ${comp.marginBottom || 0}px`
+              },
+              className: 'w-full'
+            });
+
+          case 'shape':
+            return React.createElement('div', {
+              style: {
+                backgroundColor: comp.fillColor,
+                borderColor: comp.strokeColor,
+                borderWidth: comp.strokeWidth,
+                borderStyle: comp.strokeWidth > 0 ? 'solid' : 'none',
+                borderRadius: comp.borderRadius || '0px',
+                width: '100%',
+                height: '100%'
+              },
+              className: 'w-full h-full'
+            });
+
+          default:
+            return React.createElement('div', {
+              className: 'w-full h-full bg-slate-100/80 border border-dashed border-slate-300 flex items-center justify-center text-slate-500 text-xs'
+            }, '未知组件');
+        }
+      };
+
+      const renderPage = (page, pageId) => {
+        const components = data.pageComponents[pageId] || [];
+        console.log('渲染页面:', pageId, '组件数量:', components.length, '组件:', components);
+
+        // 使用保存的canvasMode，没有则回退到推断
+        let isListMode = false;
+        if (canvasModes[pageId] !== undefined) {
+          isListMode = canvasModes[pageId] === 'list';
+        } else {
+          // 回退：检查是否是列表模式组件（没有 x 和 y 坐标）
+          isListMode = components.some(comp => comp.x === undefined || comp.x === null || comp.y === undefined || comp.y === null);
+        }
+        console.log('页面', pageId, '模式:', canvasModes[pageId], 'isListMode=', isListMode);
+
+        // 完全复制canvas.html预览模式的画板容器结构（去除iPhone边框、状态栏和导航栏）
+        // 限制页面高度，使移动端设备可以在这个高度范围内上下滚动
+        // 自适应宽度：小屏幕100%宽，大屏幕限制最大宽度430px
+        return React.createElement("div", {
+          className: "w-full max-w-[430px] bg-white relative overflow-hidden flex flex-col shadow-xl shadow-slate-200/50 z-10 mx-auto",
+          style: {
+            height: page.height,
+            maxHeight: '100vh'
+          }
+        },
+          // 画布内容区 - 完全复制canvas.html，允许在页面高度内滚动
+          React.createElement("div", {
+            ref: canvasContainerRef,
+            className: "flex-1 overflow-y-auto flex justify-center custom-scrollbar",
+            style: {
+              zIndex: 40,
+              // 固定模式：背景在外层滚动容器上
+              backgroundColor: page.bgAttachment === 'fixed' ? page.bgColor : 'transparent',
+              backgroundImage: page.bgAttachment === 'fixed' && page.bgImage ? `url(${page.bgImage})` : 'none',
+              backgroundSize: page.bgAttachment === 'fixed' ? 'cover' : 'auto',
+              backgroundPosition: 'center',
+              backgroundAttachment: page.bgAttachment === 'fixed' ? 'fixed' : 'scroll'
+            }
+          },
+            isListMode ? React.createElement("div", {
+              className: "relative drop-area flex-shrink-0 flex flex-col",
+              style: {
+                minHeight: `${page.height}px`,
+                padding: '0 0px',
+                width: '100%',
+                // 填充模式：背景在内层内容容器上
+                backgroundColor: page.bgAttachment === 'fill' ? page.bgColor : 'transparent',
+                backgroundImage: page.bgAttachment === 'fill' && page.bgImage ? `url(${page.bgImage})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }
+            },
+              (components.length === 0 && React.createElement("div", {
+                className: "absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none"
+              },
+                React.createElement("div", { className: "w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3 border-2 border-dashed border-gray-300" },
+                  React.createElement(Icon, { name: "Plus", className: "w-8 h-8 opacity-50" })
+                ),
+                React.createElement("span", { className: "text-sm font-bold text-gray-400" }, "暂无内容")
+              )),
+              components.map((comp, index) => {
+                if (comp.visible === false) return null;
+
+                console.log('渲染列表模式组件:', comp.id, '尺寸:', comp.width, comp.height, '边距:', comp.marginTop, comp.marginBottom, '对齐方式:', comp.alignX);
+
+                return React.createElement(React.Fragment, { key: comp.id },
+                  React.createElement("div", {
+                    id: `list-comp-${comp.id}`,
+                    className: `relative flex w-full transition-opacity duration-200 z-0`,
+                    style: {
+                      marginTop: (comp.marginTop ?? (data.settings?.componentGap || 16)) + 'px',
+                      marginBottom: (comp.marginBottom ?? 0) + 'px'
+                    }
+                  },
+                    React.createElement("div", {
+                      className: `w-full transition-all duration-150`,
+                      style: {
+                        width: comp.width || 'auto',
+                        height: comp.height || 'auto',
+                        marginLeft: comp.alignX === 'left' ? (data.settings?.componentPadding || 16) + 'px' : comp.alignX === 'right' ? 'auto' : (data.settings?.componentPadding || 16) + 'px',
+                        marginRight: comp.alignX === 'right' ? (data.settings?.componentPadding || 16) + 'px' : comp.alignX === 'left' ? 'auto' : (data.settings?.componentPadding || 16) + 'px',
+                        outline: 'none',
+                        outlineOffset: '2px',
+                        borderRadius: '8px',
+                        position: 'static',
+                        zIndex: 'auto'
+                      }
+                    },
+                      renderComponent(comp)
+                    )
+                  )
+                );
+              })
+            ) : React.createElement("div", {
+              ref: canvasContainerRef,
+              className: "relative drop-area flex-shrink-0",
+              style: {
+                height: `${page.height}px`,
+                width: '100%',
+                // 填充模式：背景在内层内容容器上
+                backgroundColor: page.bgAttachment === 'fill' ? page.bgColor : 'transparent',
+                backgroundImage: page.bgAttachment === 'fill' && page.bgImage ? `url(${page.bgImage})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center'
+              }
+            },
+              components.map(comp => {
+                if (comp.visible === false) return null;
+
+                console.log('渲染自由模式组件:', comp.id, '位置:', comp.x, comp.y, '尺寸:', comp.width, comp.height, '原点:', comp.origin);
+
+                // 解析组件的实际尺寸
+                const width = parseSize(comp.width, true);
+                const height = parseSize(comp.height || 'auto', false);
+
+                // 根据原点计算偏移量
+                const origin = comp.origin || 'c';
+                let left = comp.x || 0;
+                let top = comp.y || 0;
+
+                // 设计时的画布宽度
+                const designWidth = 390;
+
+                // 计算组件相对于设计画布中心的位置
+                let componentLeft = comp.x || 0;
+                let componentTop = comp.y || 0;
+
+                // 先根据原点计算初始位置（相对于设计宽度）
+                switch (origin) {
+                  case 'n': // 上中
+                    componentLeft -= width / 2;
+                    break;
+                  case 'ne': // 右上
+                    componentLeft -= width;
+                    break;
+                  case 'w': // 左中
+                    componentTop -= height / 2;
+                    break;
+                  case 'c': // 中心
+                    componentLeft -= width / 2;
+                    componentTop -= height / 2;
+                    break;
+                  case 'e': // 右中
+                    componentLeft -= width;
+                    componentTop -= height / 2;
+                    break;
+                  case 'sw': // 左下
+                    componentTop -= height;
+                    break;
+                  case 's': // 下中
+                    componentLeft -= width / 2;
+                    componentTop -= height;
+                    break;
+                  case 'se': // 右下
+                    componentLeft -= width;
+                    componentTop -= height;
+                    break;
+                  case 'nw': // 左上（默认）
+                  default:
+                    break;
+                }
+
+                // 计算组件相对于设计画布中心的偏移
+                const designCenterX = designWidth / 2;
+                const componentCenterX = componentLeft + width / 2;
+                const centerOffsetX = componentCenterX - designCenterX;
+
+                // 根据实际画布宽度计算新位置
+                const actualCenterX = canvasWidth / 2;
+                left = actualCenterX - width / 2 + centerOffsetX;
+                top = componentTop;
+
+                console.log('  计算后位置 - left:', left, 'top:', top, 'width:', width, 'height:', height, 'canvasWidth:', canvasWidth);
+
+                return React.createElement("div", {
+                  key: comp.id,
+                  style: {
+                    top: `${top}px`,
+                    left: `${left}px`,
+                    width: comp.width || '100%',
+                    height: comp.height || 'auto',
+                    cursor: 'default',
+                    userSelect: 'text',
+                    zIndex: 1,
+                    position: 'absolute'
+                  }
+                }, renderComponent(comp));
+              })
+            )
+          )
+        );
+      };
+
+      if (isLoading) {
+        return React.createElement('div', {
+          className: 'w-full h-screen bg-black flex items-center justify-center'
+        },
+          React.createElement('div', { className: 'text-center' },
+            React.createElement('div', { className: 'animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4' }),
+            React.createElement('p', { className: 'text-white' }, '加载中...')
+          )
+        );
+      }
+
+      if (error) {
+        return React.createElement('div', {
+          className: 'w-full h-screen bg-black flex items-center justify-center'
+        },
+          React.createElement('div', { className: 'text-center max-w-md mx-4' },
+            React.createElement('div', { className: 'bg-red-100 text-red-500 p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4' }),
+            React.createElement('h2', { className: 'text-lg font-bold text-white mb-2' }, '加载失败'),
+            React.createElement('p', { className: 'text-gray-300 mb-4' }, error),
+            React.createElement('button', {
+              onClick: () => window.location.reload(),
+              className: 'px-4 py-2 bg-white text-black rounded-md hover:bg-gray-200 transition-colors'
+            }, '重新加载')
+          )
+        );
+      }
+
+      // 只渲染当前页面，删除页面切换组件
+      const currentPage = data.pages[currentPageIndex];
+      const pageBgColor = currentPage.bgColor || '#ffffff';
+      return React.createElement('div', {
+        className: 'w-full h-screen flex items-center justify-center overflow-hidden',
+        style: { backgroundColor: pageBgColor }
+      },
+        React.createElement('div', {
+          className: 'w-full h-full overflow-hidden'
+        },
+          renderPage(data.pages[currentPageIndex], data.pages[currentPageIndex].id)
+        )
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>

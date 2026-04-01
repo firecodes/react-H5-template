@@ -1,0 +1,2875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="requires-auth" content="true">
+  <meta name="allowed-roles" content="super_admin,admin,operator">
+  <meta name="redirect-to" content="login.html">
+  <title>活动详情</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- 引入权限检查 (必须在其他脚本之前加载) -->
+  <script src="js/auth_checker.js"></script>
+  <!-- 配置文件 -->
+  <script src="js/config.js"></script>
+  <!-- 配置加载器 -->
+  <script src="js/config-loader.js"></script>
+  <!-- 引入 Supabase API 封装 (必须在 text/babel 之前加载) -->
+  <script src="js/supabase_api.js"></script>
+  <style>
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
+    .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const Icon = ({ name, className }) => {
+      const icons = {
+        Home: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }),
+          React.createElement("polyline", { points: "9 22 9 12 15 12 15 22" })
+        ),
+        List: React.createElement(React.Fragment, null,
+          React.createElement("line", { x1: "8", x2: "21", y1: "6", y2: "6" }),
+          React.createElement("line", { x1: "8", x2: "21", y1: "12", y2: "12" }),
+          React.createElement("line", { x1: "8", x2: "21", y1: "18", y2: "18" }),
+          React.createElement("line", { x1: "3", x2: "3.01", y1: "6", y2: "6" }),
+          React.createElement("line", { x1: "3", x2: "3.01", y1: "12", y2: "12" }),
+          React.createElement("line", { x1: "3", x2: "3.01", y1: "18", y2: "18" })
+        ),
+        ChevronDown: React.createElement("polyline", { points: "6 9 12 15 18 9" }),
+        Edit: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" }),
+          React.createElement("path", { d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" })
+        ),
+        Gift: React.createElement(React.Fragment, null,
+          React.createElement("polyline", { points: "20 12 20 22 4 22 4 12" }),
+          React.createElement("rect", { width: "20", height: "5", x: "2", y: "7" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "22", y2: "7" }),
+          React.createElement("path", { d: "M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" }),
+          React.createElement("path", { d: "M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" })
+        ),
+        Layout: React.createElement(React.Fragment, null,
+          React.createElement("rect", { width: "18", height: "18", x: "3", y: "3", rx: "2", ry: "2" }),
+          React.createElement("line", { x1: "3", x2: "21", y1: "9", y2: "9" }),
+          React.createElement("line", { x1: "9", x2: "9", y1: "21", y2: "9" })
+        ),
+        BarChart: React.createElement(React.Fragment, null,
+          React.createElement("line", { x1: "12", x2: "12", y1: "20", y2: "10" }),
+          React.createElement("line", { x1: "18", x2: "18", y1: "20", y2: "4" }),
+          React.createElement("line", { x1: "6", x2: "6", y1: "20", y2: "16" })
+        ),
+        QrCode: React.createElement(React.Fragment, null,
+          React.createElement("rect", { width: "5", height: "5", x: "3", y: "3", rx: "1" }),
+          React.createElement("rect", { width: "5", height: "5", x: "16", y: "3", rx: "1" }),
+          React.createElement("rect", { width: "5", height: "5", x: "16", y: "16", rx: "1" }),
+          React.createElement("rect", { width: "5", height: "5", x: "3", y: "16", rx: "1" })
+        ),
+        Download: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }),
+          React.createElement("polyline", { points: "7 10 12 15 17 10" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "15", y2: "3" })
+        ),
+        Save: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" }),
+          React.createElement("polyline", { points: "17 21 17 13 7 13 7 21" }),
+          React.createElement("polyline", { points: "7 3 7 8 15 8" })
+        ),
+        User: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }),
+          React.createElement("circle", { cx: "12", cy: "7", r: "4" })
+        ),
+        LogOut: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }),
+          React.createElement("polyline", { points: "16 17 21 12 16 7" }),
+          React.createElement("line", { x1: "21", x2: "9", y1: "12", y2: "12" })
+        ),
+        Link: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" }),
+          React.createElement("path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" })
+        ),
+        X: React.createElement(React.Fragment, null,
+          React.createElement("line", { x1: "18", x2: "6", y1: "6", y2: "18" }),
+          React.createElement("line", { x1: "6", x2: "18", y1: "6", y2: "18" })
+        ),
+        Eye: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }),
+          React.createElement("circle", { cx: "12", cy: "12", r: "3" })
+        ),
+        EyeOff: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" }),
+          React.createElement("line", { x1: "1", x2: "23", y1: "1", y2: "23" })
+        ),
+        AlertCircle: React.createElement(React.Fragment, null,
+          React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+          React.createElement("line", { x1: "12", x2: "12", y1: "8", y2: "12" }),
+          React.createElement("line", { x1: "12", x2: "12.01", y1: "16", y2: "16" })
+        ),
+        Lock: React.createElement(React.Fragment, null,
+          React.createElement("rect", { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }),
+          React.createElement("path", { d: "M7 11V7a5 5 0 0 1 10 0v4" })
+        ),
+        CheckCircle: React.createElement(React.Fragment, null,
+          React.createElement("path", { d: "M22 11.08V12a10 10 0 1 1-5.93-9.14" }),
+          React.createElement("polyline", { points: "22 4 12 14.01 9 11.01" })
+        ),
+        XCircle: React.createElement(React.Fragment, null,
+          React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+          React.createElement("line", { x1: "15", x2: "9", y1: "9", y2: "15" }),
+          React.createElement("line", { x1: "9", x2: "15", y1: "9", y2: "15" })
+        )
+      };
+
+      return React.createElement("svg", {
+        xmlns: "http://www.w3.org/2000/svg",
+        width: "24",
+        height: "24",
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: "2",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        className: className
+      }, icons[name] || React.createElement("circle", { cx: "12", cy: "12", r: "10" }));
+    };
+
+    // 生成随机16位活动码
+    const generateActivityCode = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    };
+
+    // 生成随机邀请码
+    const generateInviteCode = () => {
+      return Math.random().toString(36).substr(2, 8).toUpperCase();
+    };
+
+    // 角色名称映射
+    const roleMap = {
+      1: '超管',
+      2: '管理员',
+      3: '用户'
+    };
+
+    // 角色颜色映射
+    const roleColorMap = {
+      1: 'bg-red-100 text-red-800',
+      2: 'bg-orange-100 text-orange-800',
+      3: 'bg-blue-100 text-blue-800'
+    };
+
+    // --- 修改密码弹窗组件 ---
+    const ChangePasswordModal = ({ isOpen, onClose, onSuccess }) => {
+      const [oldPassword, setOldPassword] = useState('');
+      const [newPassword, setNewPassword] = useState('');
+      const [confirmPassword, setConfirmPassword] = useState('');
+      const [showOldPassword, setShowOldPassword] = useState(false);
+      const [showNewPassword, setShowNewPassword] = useState(false);
+      const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const [errors, setErrors] = useState([]);
+      const [successMessage, setSuccessMessage] = useState('');
+
+      const validateForm = () => {
+        const errors = [];
+        if (!oldPassword.trim()) {
+          errors.push('请输入旧密码');
+        }
+        if (!newPassword.trim()) {
+          errors.push('请输入新密码');
+        } else if (newPassword.length < 6) {
+          errors.push('密码长度至少为6位');
+        }
+        if (!confirmPassword.trim()) {
+          errors.push('请确认密码');
+        } else if (newPassword !== confirmPassword) {
+          errors.push('两次输入的密码不一致');
+        }
+        return errors;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        setErrors([]);
+        setSuccessMessage('');
+
+        const validationErrors = validateForm();
+        if (validationErrors.length > 0) {
+          setErrors(validationErrors);
+          return;
+        }
+
+        setIsLoading(true);
+        try {
+          const result = await window.H5CmsAPI.AuthAPI.changePassword(oldPassword, newPassword);
+          if (result.code === 200) {
+            setSuccessMessage('密码修改成功！');
+            setTimeout(() => {
+              onSuccess();
+            }, 1500);
+          }
+        } catch (error) {
+          setErrors([error.message]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] z-[9999] flex items-center justify-center">
+          <div className="absolute top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] bg-slate-900/40 backdrop-blur-xl"></div>
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto z-[10000]">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">修改密码</h2>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <Icon name="X" className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {errors.length > 0 && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    {errors.map((error, index) => (
+                      <div key={index} className="flex items-center text-red-600 text-sm">
+                        <Icon name="AlertCircle" className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {error}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {successMessage && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center text-green-600">
+                      <Icon name="CheckCircle" className="w-5 h-5 mr-2" />
+                      {successMessage}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">旧密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showOldPassword ? 'text' : 'password'}
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入旧密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowOldPassword(!showOldPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showOldPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">新密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请输入新密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showNewPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">确认新密码</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Icon name="Lock" className="h-5 w-5 text-slate-400" />
+                    </div>
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="block w-full pl-10 pr-10 py-2 border border-slate-300 rounded-lg leading-5 bg-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      placeholder="请确认新密码"
+                      disabled={isLoading}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="text-slate-400 hover:text-slate-500 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        {showConfirmPassword ? <Icon name="EyeOff" className="h-5 w-5" /> : <Icon name="Eye" className="h-5 w-5" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="pt-4">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        修改中...
+                      </div>
+                    ) : '修改密码'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // --- 用户菜单弹窗组件 ---
+    const UserMenuModal = ({ isOpen, onClose, onChangePassword, onLogout }) => {
+      if (!isOpen) return null;
+
+      return (
+        <div className="fixed top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] z-[9998] flex items-center justify-center">
+          <div className="absolute top-[-100px] left-[-100px] right-[-100px] bottom-[-100px] bg-slate-900/40 backdrop-blur-xl" onClick={onClose}></div>
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-sm w-full max-h-[90vh] overflow-y-auto z-[10000]">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-800">用户菜单</h2>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <button
+                onClick={() => {
+                  onClose();
+                  onChangePassword();
+                }}
+                className="w-full flex items-center justify-start px-4 py-3 rounded-xl text-slate-700 border-2 border-gray-200 hover:bg-yellow-50 hover:text-yellow-800 hover:border-yellow-400 transition-all"
+              >
+                <Icon name="User" className="w-5 h-5 mr-3" />
+                修改密码
+              </button>
+              <button
+                onClick={() => {
+                  onClose();
+                  onLogout();
+                }}
+                className="w-full flex items-center justify-start px-4 py-3 rounded-xl text-slate-700 border-2 border-gray-200 hover:bg-red-50 hover:text-red-800 hover:border-red-400 transition-all"
+              >
+                <Icon name="LogOut" className="w-5 h-5 mr-3" />
+                退出账号
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full flex items-center justify-start px-4 py-3 rounded-xl text-slate-700 border-2 border-gray-200 hover:bg-blue-50 hover:text-blue-800 hover:border-blue-300 transition-all"
+              >
+                <Icon name="X" className="w-5 h-5 mr-3" />
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    function App() {
+      const [currentTime, setCurrentTime] = useState(new Date());
+      const [showUserMenu, setShowUserMenu] = useState(false);
+      const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+      const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+      const [activeMenu, setActiveMenu] = useState('base');
+      const [authChecker, setAuthChecker] = useState(null);
+      // 统计数据状态
+      const [statsDataLoaded, setStatsDataLoaded] = useState(false);
+      const [processedStatsData, setProcessedStatsData] = useState({
+        totalVisits: 0,
+        totalUniqueVisitors: 0,
+        totalSubmits: 0,
+        conversionRate: 0,
+        weekData: [
+          { date: "3/1", visits: 0, submits: 0 },
+          { date: "3/2", visits: 0, submits: 0 },
+          { date: "3/3", visits: 0, submits: 0 },
+          { date: "3/4", visits: 0, submits: 0 },
+          { date: "3/5", visits: 0, submits: 0 },
+          { date: "3/6", visits: 0, submits: 0 },
+          { date: "3/7", visits: 0, submits: 0 }
+        ],
+        sourceData: [
+          { name: "微信朋友圈", value: 0, color: "#3B82F6" },
+          { name: "公众号", value: 0, color: "#10B981" },
+          { name: "直接访问", value: 0, color: "#F59E0B" },
+          { name: "其他", value: 0, color: "#EF4444" }
+        ],
+        userRecords: []
+      });
+
+      // 获取用户信息
+      const userInfo = LoginManager?.getUserInfo() || { name: '用户', role: 'user' };
+      const userRoleId = userInfo.roleId;
+
+      // 处理退出登录
+      const handleLogout = () => {
+        if (confirm("确定要退出吗？")) {
+          if (authChecker) {
+            authChecker.logout();
+          } else {
+            LoginManager.clearLoginInfo();
+            window.location.href = 'login.html';
+          }
+        }
+      };
+
+      // 处理修改密码成功
+      const handleChangePasswordSuccess = () => {
+        setIsChangePasswordModalOpen(false);
+      };
+      const username = userInfo.name || '用户';
+      const isAdmin = userInfo.role === 'admin' || userInfo.role === 'super_admin';
+      const [activityDetail, setActivityDetail] = useState({
+        id: '0001',
+        name: '未加载',
+        activityId: '',  // 用户输入的自定义唯一标识符
+        activityCode: generateActivityCode(),  // 活动码，随机生成
+        status: '已发布',
+        fee: 99.9,
+        creator: window.LoginManager?.getUserInfo()?.real_name || window.LoginManager?.getUserInfo()?.username || '未知用户',
+        inviteCode: generateInviteCode(),
+        createTime: '2026-03-01 10:00:00',
+        startTime: '2026-03-10 00:00:00',
+        endTime: '2026-04-10 23:59:59',
+        isInvitation: 0,
+        imgPath: '',
+        shareTitle: '无主标题',
+        shareSubtitle: '无副标题',
+        shareThumbnail: '',
+        description: '<p>未加载描述</p>',
+        maximumLimit: 1,
+        price: 0,
+        physicalInventory: 100,
+        lotteryConfig: {
+          nulotteryProbability: 30,
+          oulotteryProbability: 20,
+          numberInActivity: 3,
+          needToBindMobile: 0,
+          calculateRange: 'daily',
+          numberInRange: 1,
+          payMchId: '1234567890'
+        }
+      });
+
+      // 奖品列表数据
+      const [prizeList, setPrizeList] = useState([]);
+
+      // 加载奖品列表
+      const loadPrizeList = async (activityId) => {
+        if (!activityId || !window.H5CmsAPI) return;
+        try {
+          const result = await H5CmsAPI.PrizeAPI.getList(activityId);
+          if (result.data && Array.isArray(result.data)) {
+            setPrizeList(result.data);
+            // 奖品列表加载完成后，更新原始数据
+            setOriginalData(prev => ({
+              ...prev,
+              prizeList: [...result.data]
+            }));
+          }
+        } catch (error) {
+          console.error('加载奖品列表失败:', error);
+          // 如果API调用失败，不显示错误提示，保持空列表
+        }
+      };
+
+      // 奖池列表数据
+      const [prizePoolList, setPrizePoolList] = useState([]);
+      const [prizePoolLoading, setPrizePoolLoading] = useState(false);
+
+      // 加载奖池列表
+      const loadPrizePoolList = async (activityId, params = {}) => {
+        if (!activityId || !window.H5CmsAPI) return;
+        setPrizePoolLoading(true);
+        try {
+          const result = await H5CmsAPI.PrizePoolAPI.getList(activityId, params);
+          if (result.data && Array.isArray(result.data)) {
+            setPrizePoolList(result.data);
+          }
+        } catch (error) {
+          console.error('加载奖池列表失败:', error);
+          // 保持空列表而不显示错误提示
+        } finally {
+          setPrizePoolLoading(false);
+        }
+      };
+
+      // 计算范围选项
+      const calculateRangeOptions = [
+        { value: 'daily', label: '天' },
+        { value: 'weekly', label: '周' },
+        { value: 'monthly', label: '月' }
+      ];
+
+      // 链接生成器状态（移到顶层符合Hook规则）
+      const [qrSize, setQrSize] = useState(400);
+      const [customSize, setCustomSize] = useState(400);
+      const [logoType, setLogoType] = useState('none');
+      const [qrCodeUrl, setQrCodeUrl] = useState('');
+      const [generating, setGenerating] = useState(false);
+      const [activityLink, setActivityLink] = useState('');
+      const [darkColor, setDarkColor] = useState('#000000');
+      const [lightColor, setLightColor] = useState('#ffffff');
+      const [transparentBg, setTransparentBg] = useState(false);
+      const [logoImage, setLogoImage] = useState(null);
+      const [logoSize, setLogoSize] = useState(25);
+      const [selectedPageId, setSelectedPageId] = useState(null);
+
+      // 初始化页面选择和活动链接
+      useEffect(() => {
+        const baseUrl = window.location.origin + window.location.pathname.replace('detail.html', '');
+        const activityIdentifier = activityDetail.activity_id || activityDetail.activityId;
+
+        // 确保 activityDetail 和 pages 都加载完成
+        if (activityIdentifier && pages.length > 0) {
+          // 初始化 selectedPageId
+          if (!selectedPageId) {
+            const firstPageId = pages.length > 0 ? pages[0].id : 'page-1';
+            setSelectedPageId(firstPageId);
+          }
+
+          // 确保活动链接已生成
+          if (!activityLink) {
+            const targetPageId = selectedPageId || (pages.length > 0 ? pages[0].id : 'page-1');
+            const defaultLink = `${baseUrl}page#${activityIdentifier}/${targetPageId}`;
+            setActivityLink(defaultLink);
+          }
+        }
+      }, [activityDetail.activity_id, activityDetail.activityId, pages]);
+
+      // 页面配置状态（从数据库获取）
+      const [pages, setPages] = useState([{ id: 'page-1' }]);
+
+      // 用户提交记录表格状态（移到顶层符合Hook规则）
+      const [searchTerm, setSearchTerm] = useState('');
+      const [currentPage, setCurrentPage] = useState(1);
+      const [showExportDropdown, setShowExportDropdown] = useState(false);
+
+      // 奖品弹窗状态（移到顶层符合Hook规则）
+      const [showPrizeModal, setShowPrizeModal] = useState(false);
+      const [editingPrize, setEditingPrize] = useState(null);
+      const [prizeFormData, setPrizeFormData] = useState({
+        id: '',
+        name: '',
+        type: 1,
+        amount: 0,
+        num: 0,
+        maxWinCount: 1,
+        winTimeRange: 'day'
+      });
+
+      useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+
+        // 初始化权限检查器
+        const checker = initPageAuth({
+          requireAuth: true,
+          allowedRoles: ['super_admin', 'admin', 'operator'],
+          redirectTo: 'login.html'
+        });
+        setAuthChecker(checker);
+
+        return () => {
+          clearInterval(timer);
+          checker.stopPeriodicCheck();
+        };
+      }, []);
+
+      // 当切换到数据看板菜单时加载统计数据
+      useEffect(() => {
+        if (activeMenu === 'data' && !statsDataLoaded && activityDetail.id) {
+          const loadStatsData = async () => {
+            try {
+              const [statsResult, trendResult, submissionsResult] = await Promise.all([
+                // 获取活动统计数据
+                H5CmsAPI.StatisticsAPI.getActivityStats(activityDetail.id).catch(error => {
+                  console.error('获取活动统计数据失败:', error);
+                  return { code: 500, data: null };
+                }),
+                // 获取活动趋势数据
+                H5CmsAPI.StatisticsAPI.getActivityTrend(activityDetail.id, { timeRange: '7' }).catch(error => {
+                  console.error('获取活动趋势数据失败:', error);
+                  return { code: 500, data: null };
+                }),
+                // 获取用户提交记录
+                H5CmsAPI.StatisticsAPI.getSubmissions(activityDetail.id, { page: 1, pageSize: 5 }).catch(error => {
+                  console.error('获取用户提交记录失败:', error);
+                  return { code: 500, data: null };
+                })
+              ]);
+
+              // 处理数据，确保有默认值
+              const processedStatsData = statsResult.code === 200 ? statsResult.data : {
+                totalVisits: 0,
+                totalUniqueVisitors: 0,
+                totalSubmits: 0,
+                conversionRate: 0,
+                weekData: [],
+                sourceData: [],
+                userRecords: []
+              };
+
+              const processedTrendData = trendResult.code === 200 ? trendResult.data : [];
+              const processedSubmissionsData = submissionsResult.code === 200 ? submissionsResult.data : { list: [], total: 0, page: 1, pageSize: 5 };
+
+              // 设置处理后的数据
+              setProcessedStatsData({
+                totalVisits: processedStatsData.totalVisits,
+                totalUniqueVisitors: processedStatsData.totalUniqueVisitors,
+                totalSubmits: processedStatsData.totalSubmits,
+                conversionRate: processedStatsData.conversionRate,
+                weekData: processedStatsData.weekData.length > 0 ? processedStatsData.weekData : processedTrendData.length > 0 ? processedTrendData : [
+                  { date: "3/1", visits: 0, submits: 0 },
+                  { date: "3/2", visits: 0, submits: 0 },
+                  { date: "3/3", visits: 0, submits: 0 },
+                  { date: "3/4", visits: 0, submits: 0 },
+                  { date: "3/5", visits: 0, submits: 0 },
+                  { date: "3/6", visits: 0, submits: 0 },
+                  { date: "3/7", visits: 0, submits: 0 }
+                ],
+                sourceData: processedStatsData.sourceData.length > 0 ? processedStatsData.sourceData : [
+                  { name: "微信朋友圈", value: 0, color: "#3B82F6" },
+                  { name: "公众号", value: 0, color: "#10B981" },
+                  { name: "直接访问", value: 0, color: "#F59E0B" },
+                  { name: "其他", value: 0, color: "#EF4444" }
+                ],
+                userRecords: processedSubmissionsData.list.length > 0 ? processedSubmissionsData.list : processedStatsData.userRecords.length > 0 ? processedStatsData.userRecords : []
+              });
+            } catch (error) {
+              console.error('加载统计数据失败:', error);
+              // 保留默认值，显示空状态
+            } finally {
+              setStatsDataLoaded(true);
+            }
+          };
+
+          loadStatsData();
+        }
+      }, [activeMenu, statsDataLoaded, activityDetail.id]);
+
+      // 从URL参数获取活动ID
+      const getActivityIdFromUrl = () => {
+        // 优先尝试从hash获取：格式 #activityId/pageId 或 #activityId
+        const hash = window.location.hash.slice(1);
+        if (hash && hash.length > 0) {
+          // 如果hash包含斜杠，第一部分是activityId
+          const parts = hash.split('/');
+          return parts[0];
+        }
+        // 回退：从query获取
+        const params = new URLSearchParams(window.location.search);
+        return params.get('id');
+      };
+
+      // 加载活动详情
+      const loadActivityDetail = async (activityIdentifier) => {
+        try {
+          if (!window.H5CmsAPI) {
+            console.error('API未加载');
+            alert('API未加载，请刷新页面重试');
+            return;
+          }
+
+          console.log('正在加载活动详情，标识符=', activityIdentifier);
+          // 先尝试按自定义activity_id查找
+          let data = null;
+          try {
+            const result = await H5CmsAPI.ActivityAPI.getByActivityId(activityIdentifier);
+            data = result.data;
+            console.log('按activity_id加载成功');
+          } catch (e) {
+            console.log('按activity_id加载失败:', e.message);
+            // 如果按activity_id查找失败，设置activity_id为当前标识符，让用户可以继续编辑
+            console.log('没有找到现有活动，将作为新活动编辑');
+            // 保留活动标识符，让用户在保存时创建活动
+            const currentUser = window.LoginManager?.getUserInfo();
+            const newActivityDetail = {
+              ...activityDetail,
+              activity_id: activityIdentifier,
+              creator: currentUser?.real_name || currentUser?.username || '未知用户',
+              createTime: new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+              status: '未发布'
+            };
+            setActivityDetail(newActivityDetail);
+
+            // 为新活动设置原始数据
+            setOriginalData({
+              activityDetail: { ...newActivityDetail },
+              prizeList: []
+            });
+            return;
+          }
+
+          console.log('加载活动详情成功:', data);
+
+          // 权限检查：3级用户只能查看自己创建的活动
+          // 使用数据库中的 roleId 数字属性判断用户等级
+          const currentUser = window.LoginManager?.getUserInfo();
+          const userRoleId = currentUser?.roleId;
+          console.log('用户角色ID（数字）:', userRoleId);
+
+          if (userRoleId === 3 && data.creator_id !== currentUser.id) {
+            console.error('权限不足：3级用户只能查看自己创建的活动');
+            console.log('当前用户ID:', currentUser.id);
+            console.log('活动创建者ID:', data.creator_id);
+            alert('您没有权限查看此活动！');
+            // 重定向到活动列表
+            window.location.href = 'list.html';
+            return;
+          }
+          setActivityDetail(prev => ({
+            ...prev,
+            ...data,
+            // 还原扩展字段
+            ...(data.extended || {}),
+            // 字段映射
+            activityId: data.activity_id,
+            activityCode: data.activity_code,
+            // 状态转换
+            status: data.status === 1 ? '已发布' : (data.status === 2 ? '已停止' : '未发布'),
+            startTime: data.start_time,
+            endTime: data.end_time,
+            maximumLimit: data.maximum_limit,
+            physicalInventory: data.physical_inventory,
+            shareTitle: data.share_title,
+            shareSubtitle: data.share_subtitle,
+            shareThumbnail: data.share_thumbnail,
+            isInvitation: data.is_invitation,
+            lotteryConfig: data.lottery_config,
+            // 映射创建者信息 - 优先使用数据库字段
+            creator: data.creator_name || data.creator || (data.extended?.creator || '未知用户')
+          }));
+
+          // 从API加载奖品列表
+          loadPrizeList(data.id);
+
+          // 数据加载完成后设置原始数据，用于检测修改
+          setOriginalData({
+            activityDetail: { ...data },
+            prizeList: []
+          });
+
+          // 从API加载奖池列表
+          loadPrizePoolList(data.id);
+
+          // 还原页面配置（与canvas.html保持一致）
+          if (data.page_config) {
+            if (data.page_config.pages && data.page_config.pages.length > 0) {
+              setPages(data.page_config.pages);
+              console.log('页面配置已加载:', data.page_config.pages);
+
+              // 确保在加载页面配置后，selectedPageId 和活动链接能正确更新
+              const firstPageId = data.page_config.pages[0].id;
+              setSelectedPageId(firstPageId);
+
+              // 生成活动链接
+              const baseUrl = window.location.origin + window.location.pathname.replace('detail.html', '');
+              const activityIdentifier = data.activity_id || data.activityId;
+              const defaultLink = `${baseUrl}page#${activityIdentifier}/${firstPageId}`;
+              setActivityLink(defaultLink);
+            }
+          }
+
+        } catch (err) {
+          console.error('加载活动详情失败:', err);
+          alert('加载活动详情失败: ' + err.message);
+        }
+      };
+
+      // 保存活动详情
+      const saveActivityDetail = async () => {
+        try {
+          if (!window.H5CmsAPI) {
+            alert('API未加载，请刷新页面重试');
+            return;
+          }
+
+          console.log('正在保存活动详情:', activityDetail);
+
+          // 判断是更新还是创建：检查是否有UUID格式的id
+          const isUpdate = activityDetail.id &&
+            activityDetail.id.length > 10 &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(activityDetail.id);
+
+          const { data, error } = isUpdate
+            ? await H5CmsAPI.ActivityAPI.update(activityDetail.id, activityDetail)
+            : await H5CmsAPI.ActivityAPI.create({
+                ...activityDetail,
+                activity_id: activityDetail.activity_id || activityDetail.id,
+                activity_code: generateActivityCode(), // 每次创建新活动都强制生成新的唯一码
+                invite_code: generateInviteCode(),
+                status: activityDetail.status === '已发布' ? 1 : 0,
+                is_deleted: false,
+                // 确保不传递可能导致问题的空 id
+                id: undefined
+              });
+
+          if (error) throw error;
+
+          alert('保存成功！活动ID: ' + data.id);
+
+          // 更新本地ID - 如果data.id有值，直接更新，不管之前有没有
+          if (data.id) {
+            setActivityDetail(prev => ({ ...prev, id: data.id }));
+            // 更新URL保持hash格式
+            const hash = window.location.hash || `#${data.activity_id}/base`;
+            window.history.replaceState({}, '', hash);
+          }
+
+        } catch (err) {
+          console.error('保存失败:', err);
+          alert('保存失败: ' + err.message);
+        }
+      };
+
+      // 页面加载时加载活动数据
+      useEffect(() => {
+        // 解析活动ID和标签页
+        const activityId = getActivityIdFromUrl();
+        // 从hash解析标签页
+        const hash = window.location.hash.slice(1);
+        if (hash && hash.length > 0) {
+          const parts = hash.split('/');
+          if (parts.length >= 2 && parts[1]) {
+            setActiveMenu(parts[1]);
+          }
+        }
+
+        // 首先检查是否有新创建的活动信息
+        const newActivity = sessionStorage.getItem('newActivity');
+        if (newActivity && activityId) {
+          console.log('使用 sessionStorage 中的新活动信息');
+          const activityData = JSON.parse(newActivity);
+          // 初始化新活动的详细信息
+          const newActivityDetail = {
+            ...activityDetail,
+            activity_id: activityData.id,  // 注意这里设置的是 activity_id，不是 id
+            name: activityData.name,
+            activityCode: generateActivityCode(),  // 创建新活动时随机生成活动码
+            createTime: new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            status: '未发布'
+          };
+          setActivityDetail(newActivityDetail);
+          // 为新活动设置原始数据
+          setOriginalData({
+            activityDetail: { ...newActivityDetail },
+            prizeList: []
+          });
+          // 清除 sessionStorage 中的数据，避免重复初始化
+          sessionStorage.removeItem('newActivity');
+        } else if (activityId) {
+          // 没有新活动信息，直接加载现有活动
+          loadActivityDetail(activityId);
+        }
+      }, []);
+
+      const formatDateTime = (date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+        const weekday = weekdays[date.getDay()];
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return { date: `${year}年${month}月${day}日`, weekday, time: `${hours}:${minutes}:${seconds}` };
+      };
+
+      const timeInfo = formatDateTime(currentTime);
+
+      // 用于跟踪页面是否被修改的状态
+      const [isModified, setIsModified] = useState(false);
+
+      // 初始化原始数据，用于检测是否有修改
+      const [originalData, setOriginalData] = useState({});
+
+      // 初始化原始数据（在数据加载完成后设置）
+      const setOriginalDataFromCurrent = () => {
+        setOriginalData({
+          activityDetail: { ...activityDetail },
+          prizeList: [...prizeList]
+        });
+      };
+
+      // 计算修改的元素数量
+      const getModifiedCount = () => {
+        let count = 0;
+
+        // 检查基础信息的修改
+        if (originalData.activityDetail && activityDetail) {
+          Object.keys(originalData.activityDetail).forEach(key => {
+            if (JSON.stringify(originalData.activityDetail[key]) !== JSON.stringify(activityDetail[key])) {
+              count++;
+            }
+          });
+        }
+
+        // 检查奖品列表的修改
+        const originalPrizes = originalData.prizeList || [];
+        const currentPrizes = prizeList || [];
+
+        // 先检查数量变化
+        if (originalPrizes.length !== currentPrizes.length) {
+          count += Math.abs(originalPrizes.length - currentPrizes.length);
+        }
+
+        // 检查每个奖品的属性变化
+        originalPrizes.forEach((originalPrize, index) => {
+          if (currentPrizes[index]) {
+            Object.keys(originalPrize).forEach(key => {
+              if (JSON.stringify(originalPrize[key]) !== JSON.stringify(currentPrizes[index][key])) {
+                count++;
+              }
+            });
+          }
+        });
+
+        return count;
+      };
+
+      // 优化：避免使用 JSON.stringify 比较大对象
+      // 只在实际需要时才比较（用户点击保存时），或者使用更简单的比较方法
+      // 暂时禁用自动检查，只在用户操作时设置标记
+      useEffect(() => {
+        // 仅在页面初始化时设置一次未修改状态
+      }, []);
+
+      const handleSave = async () => {
+        try {
+          if (!window.H5CmsAPI) {
+            alert('API未加载，请刷新页面重试');
+            return;
+          }
+
+          // 获取当前登录用户信息
+          const currentUser = window.LoginManager?.getUserInfo();
+
+          // 只保存数据库中存在的字段，过滤掉临时字段
+          // 主键id由数据库自动生成UUID，activity_id存储8位随机唯一标识符用于URL
+          const dataToSave = {
+            activity_id: activityDetail.activity_id || activityDetail.activityId, // 页面创建时填写的唯一标识符
+            activity_code: activityDetail.activityCode,
+            name: activityDetail.name,
+            status: activityDetail.status === '已发布' ? 1 : 0,
+            description: activityDetail.description,
+            start_time: activityDetail.startTime,
+            end_time: activityDetail.endTime,
+            price: activityDetail.price,
+            maximum_limit: activityDetail.maximumLimit,
+            physical_inventory: activityDetail.physicalInventory,
+            share_title: activityDetail.shareTitle,
+            share_subtitle: activityDetail.shareSubtitle,
+            share_thumbnail: activityDetail.shareThumbnail,
+            is_invitation: activityDetail.isInvitation,
+            lottery_config: activityDetail.lotteryConfig,
+            // 设置创建者信息（只有新创建时设置）
+            ...(!activityDetail.id || activityDetail.id.length <= 10 ? {
+              creator_id: currentUser?.id || '00000000-0000-0000-0000-000000000000',
+              creator_name: currentUser?.real_name || currentUser?.username || '未知用户'
+            } : {}),
+            // 将奖品和其他扩展配置保存到extended字段
+            extended: {
+              prizeList: prizeList,
+              inviteCode: activityDetail.inviteCode,
+              creator: currentUser?.real_name || currentUser?.username || '未知用户'
+            }
+          };
+
+          console.log('正在保存活动:', dataToSave);
+
+          const { data, error } = activityDetail.id && activityDetail.id.length > 10
+            ? await H5CmsAPI.ActivityAPI.update(activityDetail.id, dataToSave)
+            : await H5CmsAPI.ActivityAPI.create(dataToSave);
+
+          if (error) throw error;
+
+          alert('保存成功！活动ID: ' + data.id);
+
+          // 更新原始数据
+          setOriginalData({
+            activityDetail: { ...activityDetail },
+            prizeList: [...prizeList]
+          });
+
+          // 保存成功，重置为未修改状态
+          setIsModified(false);
+
+          // 更新本地ID - 如果data.id有值，直接更新，不管之前有没有
+          if (data.id) {
+            setActivityDetail(prev => ({ ...prev, id: data.id }));
+            // 更新URL保持hash格式
+            const hash = window.location.hash || `#${data.activity_id}/base`;
+            window.history.replaceState({}, '', hash);
+          }
+
+        } catch (err) {
+          console.error('保存失败:', err);
+          alert('保存失败: ' + err.message);
+        }
+      };
+
+      // 奖品弹窗相关函数
+      const handleSavePrize = async () => {
+        if (!prizeFormData.name.trim()) {
+          alert('请输入奖品名称');
+          return;
+        }
+        if (prizeFormData.num <= 0) {
+          alert('请输入有效的奖品数量');
+          return;
+        }
+
+        try {
+          const activityId = activityDetail.id;
+          if (!activityId || !window.H5CmsAPI) {
+            alert('缺少必要参数');
+            return;
+          }
+
+          if (editingPrize) {
+            // 编辑现有奖品
+            await H5CmsAPI.PrizeAPI.update(editingPrize.id, prizeFormData);
+            setPrizeList(prev => prev.map(prize =>
+              prize.id === editingPrize.id ? { ...prize, ...prizeFormData } : prize
+            ));
+            alert('奖品编辑成功！');
+          } else {
+            // 添加新奖品
+            const result = await H5CmsAPI.PrizeAPI.create(activityId, prizeFormData);
+            if (result.data) {
+              setPrizeList(prev => [...prev, result.data]);
+              alert('奖品添加成功！');
+            }
+          }
+          setIsModified(true);
+
+          setShowPrizeModal(false);
+          setEditingPrize(null);
+          setPrizeFormData({
+            id: '',
+            name: '',
+            type: 1,
+            amount: 0,
+            num: 0,
+            maxWinCount: 1,
+            winTimeRange: 'day'
+          });
+        } catch (error) {
+          console.error('保存奖品失败:', error);
+          alert(`保存失败: ${error.message}`);
+        }
+      };
+
+      const handleAddPrize = () => {
+        setEditingPrize(null);
+        setPrizeFormData({
+          id: '',
+          name: '',
+          type: 1,
+          amount: 0,
+          num: 0,
+          maxWinCount: 1,
+          winTimeRange: 'day'
+        });
+        setShowPrizeModal(true);
+      };
+
+      const handleEditPrize = (id) => {
+        const prize = prizeList.find(p => p.id === id);
+        if (prize) {
+          setEditingPrize(prize);
+          setPrizeFormData(prize);
+          setShowPrizeModal(true);
+        }
+      };
+
+      const handleDeletePrize = async (id, name) => {
+        if (confirm(`确定要删除奖品【${name}】吗？`)) {
+          try {
+            if (window.H5CmsAPI) {
+              await H5CmsAPI.PrizeAPI.delete(id);
+            }
+            setPrizeList(prev => prev.filter(item => item.id !== id));
+            setIsModified(true);
+            alert('删除成功');
+          } catch (error) {
+            console.error('删除奖品失败:', error);
+            alert(`删除失败: ${error.message}`);
+          }
+        }
+      };
+
+      const handleAddPrizeNum = async (id) => {
+        const addNum = prompt('请输入新增数量:', '1');
+        if (addNum && !isNaN(addNum) && parseInt(addNum) > 0) {
+          try {
+            if (window.H5CmsAPI) {
+              await H5CmsAPI.PrizeAPI.addStock(id, parseInt(addNum));
+            }
+            setPrizeList(prev => prev.map(item =>
+              item.id === id ? { ...item, num: item.num + parseInt(addNum) } : item
+            ));
+            setIsModified(true);
+          } catch (error) {
+            console.error('增加库存失败:', error);
+            alert(`增加库存失败: ${error.message}`);
+          }
+        }
+      };
+
+      const menuItems = [
+        { id: 'base', label: '基础信息', icon: 'Edit', path: '#base' },
+        { id: 'prize', label: '奖品信息', icon: 'Gift', path: '#prize' },
+        { id: 'canvas', label: '界面可视化编辑', icon: 'Layout', path: 'canvas.html' },
+        { id: 'data', label: '数据看板', icon: 'BarChart', path: '#data' },
+        { id: 'qr', label: '链接生成器', icon: 'Link', path: '#qr' }
+      ];
+
+      // 页面加载时读取hash设置默认激活菜单
+      useEffect(() => {
+        const hash = window.location.hash.slice(1);
+        if (hash && menuItems.find(item => item.id === hash)) {
+          setActiveMenu(hash);
+        }
+      }, []);
+
+      const renderSubPage = () => {
+        switch (activeMenu) {
+          case 'base': {
+            const handleInputChange = (field, value) => {
+              setActivityDetail(prev => ({ ...prev, [field]: value }));
+              setIsModified(true);
+            };
+
+            const statusOptions = ['未发布', '已发布', '已停止'];
+
+            return React.createElement("div", { className: "space-y-6" },
+              React.createElement("div", { className: "flex items-center justify-between" },
+                React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "基础信息编辑")
+              ),
+
+              React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-6" },
+                React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-2" }, "活动信息"),
+                React.createElement("div", { className: "grid grid-cols-2 gap-6" },
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动名称"),
+                    React.createElement("input", {
+                      type: "text",
+                      value: activityDetail.name,
+                      onChange: (e) => handleInputChange('name', e.target.value),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    })
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动唯一标识符（用于URL，创建时填写，不可修改）"),
+                    React.createElement("input", {
+                      type: "text",
+                      value: activityDetail.activity_id || activityDetail.activityId || '',
+                      disabled: true,
+                      className: "w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-slate-100 text-slate-500"
+                    })
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动码（业务编码）"),
+                    React.createElement("div", { className: "flex gap-2" },
+                      React.createElement("input", {
+                        type: "text",
+                        value: activityDetail.activityCode,
+                        onChange: (e) => handleInputChange('activityCode', e.target.value),
+                        className: "flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                      }),
+                      React.createElement("button", {
+                        onClick: () => handleInputChange('activityCode', generateActivityCode()),
+                        className: "bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-sm transition-colors whitespace-nowrap"
+                      }, "生成随机码")
+                    )
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动状态"),
+                    React.createElement("select", {
+                      value: activityDetail.status,
+                      onChange: (e) => handleInputChange('status', e.target.value),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    },
+                      statusOptions.map(status => React.createElement("option", { key: status, value: status }, status))
+                    )
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动费用（元）"),
+                    React.createElement("input", {
+                      type: "number",
+                      step: "0.01",
+                      min: "0",
+                      value: activityDetail.fee,
+                      onChange: (e) => handleInputChange('fee', parseFloat(e.target.value) || 0),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    })
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "创建者"),
+                    React.createElement("input", {
+                      type: "text",
+                      value: activityDetail.creator,
+                      disabled: true,
+                      className: "w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50"
+                    })
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动开始时间"),
+                    React.createElement("input", {
+                      type: "datetime-local",
+                      value: new Date(activityDetail.startTime).toISOString().slice(0, 16),
+                      onChange: (e) => handleInputChange('startTime', new Date(e.target.value).toLocaleString('zh-CN')),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    })
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动结束时间"),
+                    React.createElement("input", {
+                      type: "datetime-local",
+                      value: new Date(activityDetail.endTime).toISOString().slice(0, 16),
+                      onChange: (e) => handleInputChange('endTime', new Date(e.target.value).toLocaleString('zh-CN')),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    })
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "邀请模式"),
+                    React.createElement("div", { className: "flex items-center gap-4 mt-2" },
+                      React.createElement("label", { className: "flex items-center gap-1 cursor-pointer" },
+                        React.createElement("input", {
+                          type: "radio",
+                          checked: activityDetail.isInvitation === 0,
+                          onChange: () => handleInputChange('isInvitation', 0),
+                          className: "w-4 h-4 text-blue-600"
+                        }),
+                        React.createElement("span", { className: "text-sm text-slate-700" }, "关闭")
+                      ),
+                      React.createElement("label", { className: "flex items-center gap-1 cursor-pointer" },
+                        React.createElement("input", {
+                          type: "radio",
+                          checked: activityDetail.isInvitation === 1,
+                          onChange: () => handleInputChange('isInvitation', 1),
+                          className: "w-4 h-4 text-blue-600"
+                        }),
+                        React.createElement("span", { className: "text-sm text-slate-700" }, "开启")
+                      )
+                    )
+                  ),
+                  activityDetail.isInvitation === 1 && React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "邀请码"),
+                    React.createElement("div", { className: "flex gap-2" },
+                      React.createElement("input", {
+                        type: "text",
+                        value: activityDetail.inviteCode,
+                        onChange: (e) => handleInputChange('inviteCode', e.target.value),
+                        className: "flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                      }),
+                      React.createElement("button", {
+                        onClick: () => handleInputChange('inviteCode', generateInviteCode()),
+                        className: "bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-sm transition-colors whitespace-nowrap"
+                      }, "生成邀请码")
+                    )
+                  ),
+                )
+              ),
+
+              React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-6" },
+                React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-2" }, "封面与分享设置"),
+                React.createElement("div", { className: "grid grid-cols-2 gap-6" },
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动封面图"),
+                    React.createElement("div", { className: "border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-blue-500 transition-colors cursor-pointer" },
+                      activityDetail.imgPath ?
+                        React.createElement("img", { src: activityDetail.imgPath, alt: "封面图", className: "max-h-48 mx-auto" }) :
+                        React.createElement("div", null,
+                          React.createElement("div", { className: "text-gray-400 mb-2" }, "点击上传封面图"),
+                          React.createElement("div", { className: "text-xs text-slate-500" }, "建议尺寸：750*400px，大小不超过2MB")
+                        )
+                    )
+                  ),
+                  React.createElement("div", { className: "space-y-4" },
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "分享主标题"),
+                      React.createElement("input", {
+                        type: "text",
+                        value: activityDetail.shareTitle,
+                        onChange: (e) => handleInputChange('shareTitle', e.target.value),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                      })
+                    ),
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "分享副标题"),
+                      React.createElement("input", {
+                        type: "text",
+                        value: activityDetail.shareSubtitle,
+                        onChange: (e) => handleInputChange('shareSubtitle', e.target.value),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                      })
+                    ),
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "分享缩略图"),
+                      React.createElement("div", { className: "border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:border-blue-500 transition-colors cursor-pointer" },
+                        activityDetail.shareThumbnail ?
+                          React.createElement("img", { src: activityDetail.shareThumbnail, alt: "缩略图", className: "max-h-24 mx-auto" }) :
+                          React.createElement("div", { className: "text-gray-400 text-xs" }, "点击上传缩略图（不超过100KB）")
+                        )
+                    )
+                  )
+                )
+              ),
+
+              React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-6" },
+                React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-2" }, "活动描述"),
+                React.createElement("textarea", {
+                  value: activityDetail.description.replace(/<[^>]*>/g, ''),
+                  onChange: (e) => handleInputChange('description', `<p>${e.target.value}</p>`),
+                  rows: 6,
+                  className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                  placeholder: "请输入活动详细描述..."
+                })
+              ),
+
+              React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-6" },
+                React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-2" }, "提交限制设置"),
+                React.createElement("div", { className: "grid grid-cols-3 gap-6" },
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "单用户最大提交次数"),
+                    React.createElement("input", {
+                      type: "number",
+                      min: "0",
+                      value: activityDetail.maximumLimit,
+                      onChange: (e) => handleInputChange('maximumLimit', parseInt(e.target.value) || 0),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    }),
+                    React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "0为无提交上限")
+                  ),
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "参与费用（分）"),
+                    React.createElement("input", {
+                      type: "number",
+                      min: "0",
+                      value: activityDetail.price,
+                      onChange: (e) => handleInputChange('price', parseInt(e.target.value) || 0),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    }),
+                    React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "0为免费参与")
+                  ),
+                  activityDetail.price !== 0 && React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "库存上限"),
+                    React.createElement("input", {
+                      type: "number",
+                      min: "0",
+                      value: activityDetail.physicalInventory,
+                      onChange: (e) => handleInputChange('physicalInventory', parseInt(e.target.value) || 0),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    }),
+                    React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "活动可参与总人数上限")
+                  )
+                )
+              )
+            );
+          }
+          case 'prize': {
+            const handleLotteryConfigChange = (field, value) => {
+              setActivityDetail(prev => ({
+                ...prev,
+                lotteryConfig: {
+                  ...prev.lotteryConfig,
+                  [field]: value
+                }
+              }));
+            };
+
+
+            const getWinTimeRangeText = (range) => {
+              const map = {
+                'ALL': '整个活动期间',
+                'DAY': '每日',
+                'WEEK': '每周'
+              };
+              return map[range] || range;
+            };
+
+            return React.createElement("div", { className: "space-y-6" },
+              React.createElement("div", { className: "flex items-center justify-between" },
+                React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "奖品信息管理")
+              ),
+
+              // 左右两栏布局
+              React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-6" },
+                // 左侧：奖品列表和抽奖配置
+                React.createElement("div", { className: "space-y-6" },
+                  React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-4" },
+                    React.createElement("div", { className: "flex items-center justify-between border-b pb-3" },
+                      React.createElement("h4", { className: "text-md font-semibold text-slate-800" }, "奖品列表"),
+                      React.createElement("button", {
+                        onClick: handleAddPrize,
+                        className: "bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 text-sm font-medium rounded-lg shadow-lg shadow-blue-500/30 transition-all duration-200 flex items-center"
+                      },
+                        "+ 添加奖品"
+                      )
+                    ),
+
+                    prizeList.length > 0 ? (
+                      React.createElement("div", { className: "space-y-3" },
+                        prizeList.map(prize => (
+                          React.createElement("div", { key: prize.id, className: "border border-slate-200 rounded-2xl p-4 hover:border-blue-300 hover:shadow-md transition-all duration-200" },
+                            React.createElement("div", { className: "flex items-center justify-between mb-3" },
+                              React.createElement("div", { className: "flex items-center gap-2" },
+                                React.createElement("span", { className: "px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium" }, prize.id),
+                                React.createElement("span", { className: "font-medium text-slate-800" }, prize.name)
+                              ),
+                              React.createElement("div", { className: "flex items-center gap-2" },
+                                React.createElement("button", {
+                                  onClick: () => handleEditPrize(prize.id),
+                                  className: "px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all duration-200"
+                                }, "编辑"),
+                                React.createElement("button", {
+                                  onClick: () => handleDeletePrize(prize.id, prize.name),
+                                  className: "px-3 py-1.5 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-all duration-200"
+                                }, "删除")
+                              )
+                            ),
+                            React.createElement("div", { className: "flex flex-wrap items-center gap-4 text-sm text-slate-600" },
+                              React.createElement("span", null, `类型：${prize.type === 1 ? '红包' : '物品'}`),
+                              React.createElement("span", { className: "text-slate-300" }, "|"),
+                              React.createElement("span", null, `金额（分）：${prize.amount}`),
+                              React.createElement("span", { className: "text-slate-300" }, "|"),
+                              React.createElement("span", null, `${getWinTimeRangeText(prize.winTimeRange)}可中奖最大次数：`),
+                              React.createElement("span", { className: "px-1.5 py-0.5 bg-red-100 text-red-700 rounded-lg text-xs font-medium" }, prize.maxWinCount),
+                              React.createElement("span", { className: "text-slate-300" }, "|"),
+                              React.createElement("span", null, `数量：${prize.num}`),
+                              React.createElement("button", {
+                                onClick: () => handleAddPrizeNum(prize.id),
+                                className: "w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold transition-all duration-200"
+                              }, "+")
+                            )
+                          )
+                        ))
+                      )
+                    ) : (
+                      React.createElement("div", { className: "text-center py-12 text-slate-500" },
+                        React.createElement("div", { className: "text-4xl mb-2" }, "🎁"),
+                        React.createElement("p", null, "尚未添加奖品"),
+                        React.createElement("button", {
+                          onClick: handleAddPrize,
+                          className: "mt-3 px-5 py-2.5 bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium rounded-lg shadow-lg shadow-blue-500/30 transition-all duration-200"
+                        }, "立即添加")
+                      )
+                    )
+                  ),
+
+                  React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-4" },
+                    React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-3" }, "抽奖配置"),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-6" },
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "新用户中奖概率 (%)"),
+                        React.createElement("input", {
+                          type: "number",
+                          min: "0",
+                          max: "100",
+                          value: activityDetail.lotteryConfig.nulotteryProbability,
+                          onChange: (e) => handleLotteryConfigChange('nulotteryProbability', parseInt(e.target.value) || 0),
+                          className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                        }),
+                        React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "取值范围：0-100" )
+                      ),
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "老用户中奖概率 (%)"),
+                        React.createElement("input", {
+                          type: "number",
+                          min: "0",
+                          max: "100",
+                          value: activityDetail.lotteryConfig.oulotteryProbability,
+                          onChange: (e) => handleLotteryConfigChange('oulotteryProbability', parseInt(e.target.value) || 0),
+                          className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                        }),
+                        React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "取值范围：0-100" )
+                      ),
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "活动期间最大中奖次数"),
+                        React.createElement("input", {
+                          type: "number",
+                          min: "0",
+                          value: activityDetail.lotteryConfig.numberInActivity,
+                          onChange: (e) => handleLotteryConfigChange('numberInActivity', parseInt(e.target.value) || 0),
+                          className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                        }),
+                        React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "0为不限制次数" )
+                      ),
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "仅限已绑定手机号用户参与"),
+                        React.createElement("div", { className: "flex items-center gap-4 mt-2" },
+                          React.createElement("label", { className: "flex items-center gap-1 cursor-pointer" },
+                            React.createElement("input", {
+                              type: "radio",
+                              checked: activityDetail.lotteryConfig.needToBindMobile === 0,
+                              onChange: () => handleLotteryConfigChange('needToBindMobile', 0),
+                              className: "w-4 h-4 text-blue-600"
+                            }),
+                            React.createElement("span", { className: "text-sm text-slate-700" }, "关闭")
+                          ),
+                          React.createElement("label", { className: "flex items-center gap-1 cursor-pointer" },
+                            React.createElement("input", {
+                              type: "radio",
+                              checked: activityDetail.lotteryConfig.needToBindMobile === 1,
+                              onChange: () => handleLotteryConfigChange('needToBindMobile', 1),
+                              className: "w-4 h-4 text-blue-600"
+                            }),
+                            React.createElement("span", { className: "text-sm text-slate-700" }, "开启")
+                          )
+                        )
+                      ),
+                      React.createElement("div", { className: "col-span-2" },
+                        React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "周期中奖次数限制"),
+                        React.createElement("div", { className: "flex items-center gap-3" },
+                          React.createElement("span", { className: "text-sm text-slate-700" }, "活动期间，每"),
+                          React.createElement("select", {
+                            value: activityDetail.lotteryConfig.calculateRange,
+                            onChange: (e) => handleLotteryConfigChange('calculateRange', e.target.value),
+                            className: "border border-slate-200 rounded-xl px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-24"
+                          },
+                            calculateRangeOptions.map(option => (
+                              React.createElement("option", { key: option.value, value: option.value }, option.label)
+                            ))
+                          ),
+                          React.createElement("span", { className: "text-sm text-slate-700" }, "可中奖最大次数为"),
+                          React.createElement("input", {
+                            type: "number",
+                            min: "0",
+                            max: activityDetail.lotteryConfig.numberInActivity,
+                            value: activityDetail.lotteryConfig.numberInRange,
+                            onChange: (e) => handleLotteryConfigChange('numberInRange', parseInt(e.target.value) || 0),
+                            className: "w-24 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                          }),
+                          activityDetail.lotteryConfig.numberInRange === 0 && (
+                            React.createElement("span", { className: "text-xs text-slate-500" }, "，0为不限制次数")
+                          )
+                        )
+                      ),
+                      React.createElement("div", { className: "col-span-2" },
+                        React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "微信支付商务号"),
+                        React.createElement("input", {
+                          type: "text",
+                          value: activityDetail.lotteryConfig.payMchId,
+                          onChange: (e) => handleLotteryConfigChange('payMchId', e.target.value),
+                          className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                          placeholder: "请输入微信支付商务号，存在红包类型奖品时必填"
+                        }),
+                        React.createElement("p", { className: "text-xs text-slate-500 mt-1" }, "若存在红包类型的奖品，需配置微信支付商务号" )
+                      )
+                    )
+                  )
+                ),
+
+                // 右侧：奖池管理
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm p-6 space-y-4" },
+                  React.createElement("div", { className: "flex items-center justify-between border-b pb-3" },
+                    React.createElement("h4", { className: "text-md font-semibold text-slate-800" }, "奖池管理"),
+                    React.createElement("div", { className: "flex items-center gap-2" },
+                      React.createElement("button", {
+                        onClick: async () => {
+                          console.log('新增奖池记录');
+                          alert('新增奖池记录功能开发中');
+                        },
+                        className: "bg-blue-600 text-white hover:bg-blue-700 px-3 py-1.5 text-sm font-medium rounded-lg shadow-lg shadow-blue-500/30 transition-all duration-200"
+                      },
+                        "新增"
+                      ),
+                      React.createElement("button", {
+                        onClick: async () => {
+                          console.log('删除奖池记录');
+                          alert('删除奖池记录功能开发中');
+                        },
+                        className: "bg-red-600 text-white hover:bg-red-700 px-3 py-1.5 text-sm font-medium rounded-lg shadow-lg shadow-red-500/30 transition-all duration-200"
+                      },
+                        "删除"
+                      ),
+                      React.createElement("button", {
+                        onClick: async () => {
+                          console.log('查询奖池记录');
+                          await loadPrizePoolList(activityDetail.id);
+                        },
+                        className: "bg-green-600 text-white hover:bg-green-700 px-3 py-1.5 text-sm font-medium rounded-lg shadow-lg shadow-green-500/30 transition-all duration-200"
+                      },
+                        "查询"
+                      )
+                    )
+                  ),
+
+                  // 筛选栏
+                  React.createElement("div", { className: "flex flex-wrap items-center gap-3" },
+                    React.createElement("select", {
+                      className: "bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                      onChange: async (e) => {
+                        console.log('状态筛选:', e.target.value);
+                        await loadPrizePoolList(activityDetail.id, { status: e.target.value });
+                      }
+                    },
+                      React.createElement("option", { value: "all" }, "全部"),
+                      React.createElement("option", { value: "won" }, "已中奖"),
+                      React.createElement("option", { value: "unwon" }, "未中奖")
+                    ),
+
+                    React.createElement("select", {
+                      className: "bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                      onChange: async (e) => {
+                        console.log('核销状态筛选:', e.target.value);
+                        await loadPrizePoolList(activityDetail.id, { verifyStatus: e.target.value });
+                      }
+                    },
+                      React.createElement("option", { value: "all" }, "全部"),
+                      React.createElement("option", { value: "verified" }, "已核销"),
+                      React.createElement("option", { value: "unverified" }, "未核销")
+                    )
+                  ),
+
+                  // 表格
+                  React.createElement("div", { className: "overflow-x-auto" },
+                    React.createElement("table", { className: "w-full text-sm text-left" },
+                      React.createElement("thead", { className: "text-xs text-slate-700 uppercase bg-slate-50" },
+                        React.createElement("tr", null,
+                          React.createElement("th", { className: "px-6 py-3" }, "编号"),
+                          React.createElement("th", { className: "px-6 py-3" }, "奖品id"),
+                          React.createElement("th", { className: "px-6 py-3" }, "奖品名称"),
+                          React.createElement("th", { className: "px-6 py-3" }, "中奖人id"),
+                          React.createElement("th", { className: "px-6 py-3" }, "状态"),
+                          React.createElement("th", { className: "px-6 py-3" }, "核销状态"),
+                          React.createElement("th", { className: "px-6 py-3" }, "中奖时间")
+                        )
+                      ),
+                      React.createElement("tbody", null,
+                        prizePoolLoading ? (
+                          React.createElement("tr", null,
+                            React.createElement("td", { className: "px-6 py-10 text-center", colSpan: 7 },
+                              React.createElement("div", { className: "flex items-center justify-center" },
+                                React.createElement("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-2" }),
+                                React.createElement("span", { className: "text-blue-600" }, "加载中...")
+                              )
+                            )
+                          )
+                        ) : prizePoolList.length > 0 ? (
+                          prizePoolList.map(item => (
+                            React.createElement("tr", { key: item.id, className: "bg-white border-b hover:bg-slate-50 transition-colors" },
+                              React.createElement("td", { className: "px-6 py-4" }, item.id),
+                              React.createElement("td", { className: "px-6 py-4" }, item.prizeId),
+                              React.createElement("td", { className: "px-6 py-4" }, item.prizeName),
+                              React.createElement("td", { className: "px-6 py-4" }, item.userId),
+                              React.createElement("td", { className: "px-6 py-4" },
+                                React.createElement("span", {
+                                  className: `px-2 py-1 rounded-full text-xs font-medium ${
+                                    item.status === '已中奖' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                                  }`
+                                }, item.status)
+                              ),
+                              React.createElement("td", { className: "px-6 py-4" },
+                                React.createElement("span", {
+                                  className: `px-2 py-1 rounded-full text-xs font-medium ${
+                                    item.verifyStatus === '已核销' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-700'
+                                  }`
+                                }, item.verifyStatus)
+                              ),
+                              React.createElement("td", { className: "px-6 py-4" }, item.winTime || '-')
+                            )
+                          ))
+                        ) : (
+                          React.createElement("tr", null,
+                            React.createElement("td", { className: "px-6 py-10 text-center text-slate-500", colSpan: 7 },
+                              React.createElement("div", null, "暂无奖池记录")
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            );
+          }
+          case 'canvas':
+            // 跳转到可视化编辑页面
+            window.location.href = 'canvas.html';
+            return null;
+          case 'data': {
+            // 使用状态变量中的数据
+            const weekData = processedStatsData.weekData;
+            const sourceData = processedStatsData.sourceData;
+            const userRecords = processedStatsData.userRecords;
+
+            // 计算最大值用于图表比例（确保至少有1个值，避免除以0）
+            const maxVisits = Math.max(...weekData.map(item => item.visits), 1);
+            const maxSubmits = Math.max(...weekData.map(item => item.submits), 1);
+
+            return React.createElement("div", { className: "space-y-6" },
+              React.createElement("div", { className: "flex items-center justify-between" },
+                React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "数据看板"),
+                React.createElement("div", { className: "flex items-center gap-2" },
+                  React.createElement("select", {
+                    className: "border border-slate-200 rounded-xl px-3 py-1.5 text-sm bg-white",
+                    onChange: (e) => {
+                      // 根据选择的时间范围更新图表数据
+                      const timeRange = e.target.value;
+                      console.log('时间范围选择:', timeRange);
+                      // 这里可以添加实际的数据更新逻辑
+                    }
+                  },
+                    React.createElement("option", { value: "7" }, "近7天"),
+                    React.createElement("option", { value: "30" }, "近30天"),
+                    React.createElement("option", { value: "month" }, "本月"),
+                    React.createElement("option", { value: "all" }, "全部")
+                  )
+                )
+              ),
+
+              // 统计卡片区域
+              React.createElement("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5" },
+                // 访问总量卡片
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow" },
+                  React.createElement("div", { className: "flex items-start justify-between" },
+                    React.createElement("div", null,
+                      React.createElement("p", { className: "text-sm text-slate-500 mb-1" }, "访问总量"),
+                      React.createElement("h4", { className: "text-3xl font-bold text-blue-600" }, processedStatsData.totalVisits.toLocaleString())
+                    ),
+                    React.createElement("div", { className: "w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600" },
+                      React.createElement(Icon, { name: "Layout", className: "w-5 h-5" })
+                    )
+                  )
+                ),
+
+                // 参与用户数卡片
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow" },
+                  React.createElement("div", { className: "flex items-start justify-between" },
+                    React.createElement("div", null,
+                      React.createElement("p", { className: "text-sm text-slate-500 mb-1" }, "参与用户数"),
+                      React.createElement("h4", { className: "text-3xl font-bold text-orange-600" }, processedStatsData.totalUniqueVisitors.toLocaleString())
+                    ),
+                    React.createElement("div", { className: "w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-600" },
+                      React.createElement(Icon, { name: "List", className: "w-5 h-5" })
+                    )
+                  )
+                ),
+
+                // 总提交次数卡片
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow" },
+                  React.createElement("div", { className: "flex items-start justify-between" },
+                    React.createElement("div", null,
+                      React.createElement("p", { className: "text-sm text-slate-500 mb-1" }, "总提交次数"),
+                      React.createElement("h4", { className: "text-3xl font-bold text-green-600" }, processedStatsData.totalSubmits.toLocaleString())
+                    ),
+                    React.createElement("div", { className: "w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600" },
+                      React.createElement(Icon, { name: "Edit", className: "w-5 h-5" })
+                    )
+                  )
+                ),
+
+                // 转化率卡片
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow" },
+                  React.createElement("div", { className: "flex items-start justify-between" },
+                    React.createElement("div", null,
+                      React.createElement("p", { className: "text-sm text-slate-500 mb-1" }, "转化率"),
+                      React.createElement("h4", { className: "text-3xl font-bold text-purple-600" }, `${processedStatsData.conversionRate}%`)
+                    ),
+                    React.createElement("div", { className: "w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600" },
+                      React.createElement(Icon, { name: "BarChart", className: "w-5 h-5" })
+                    )
+                  )
+                )
+              ),
+
+              // 图表区域
+              React.createElement("div", { className: "grid grid-cols-1 xl:grid-cols-2 gap-5" },
+                // 近7天趋势图表（折线图）
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5" },
+                  React.createElement("div", { className: "flex items-center justify-between mb-6" },
+                    React.createElement("h4", { className: "text-md font-semibold text-slate-800" }, "近7天访问/提交趋势"),
+                    React.createElement("div", { className: "flex items-center gap-4 text-sm" },
+                      React.createElement("span", { className: "flex items-center gap-1" },
+                        React.createElement("span", { className: "w-3 h-3 rounded-full bg-blue-500" }),
+                        React.createElement("span", { className: "text-slate-600" }, "访问量")
+                      ),
+                      React.createElement("span", { className: "flex items-center gap-1" },
+                        React.createElement("span", { className: "w-3 h-3 rounded-full bg-green-500" }),
+                        React.createElement("span", { className: "text-slate-600" }, "提交量")
+                      ),
+                      React.createElement("button", {
+                        className: "text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1",
+                        onClick: () => alert("导出图表数据功能")
+                      },
+                        React.createElement(Icon, { name: "Download", className: "w-4 h-4" }),
+                        "导出"
+                      )
+                    )
+                  ),
+                  // 折线图
+                  (() => {
+                    // 检查数据是否有效
+                    const hasValidData = weekData.length > 0;
+
+                    if (!hasValidData) {
+                      return React.createElement("div", { className: "flex items-center justify-center h-64 text-slate-400" },
+                        "暂无数据"
+                      );
+                    }
+
+                    // 当只有一个数据点时的处理
+                    const singleDataPoint = weekData.length === 1;
+
+                    // 计算点的位置
+                    const getPointX = (index) => {
+                      if (singleDataPoint) {
+                        return 400; // 居中
+                      }
+                      return 80 + (index / (weekData.length - 1)) * 640;
+                    };
+
+                    const getVisitsY = (visits) => {
+                      return 320 - (visits / maxVisits) * 280;
+                    };
+
+                    const getSubmitsY = (submits) => {
+                      return 320 - (submits / maxSubmits) * 280;
+                    };
+
+                    // 生成折线路径
+                    const generateLinePath = (getValue) => {
+                      if (singleDataPoint) {
+                        // 单点时绘制一个圆点
+                        const x = getPointX(0);
+                        const y = getValue(weekData[0]);
+                        return `M ${x - 2} ${y} L ${x + 2} ${y}`; // 短横线
+                      }
+                      return weekData.reduce((path, item, index) => {
+                        const x = getPointX(index);
+                        const y = getValue(item);
+                        return index === 0 ? `M ${x} ${y}` : `${path} L ${x} ${y}`;
+                      }, "");
+                    };
+
+                    return React.createElement("div", { className: "relative h-64" },
+                      React.createElement("svg", { viewBox: "0 0 800 400", className: "w-full h-full" },
+                        // 网格线
+                        React.createElement("defs", null,
+                          React.createElement("pattern", { id: "grid", width: "100", height: "80", patternUnits: "userSpaceOnUse" },
+                            React.createElement("path", { d: "M 100 0 L 0 0 0 80", fill: "none", stroke: "#f1f5f9", strokeWidth: "1" })
+                          )
+                        ),
+                        React.createElement("rect", { x: "80", y: "40", width: "640", height: "280", fill: "url(#grid)" }),
+
+                        // 访问量折线
+                        React.createElement("path", {
+                          d: generateLinePath((item) => getVisitsY(item.visits)),
+                          fill: "none",
+                          stroke: "#3b82f6",
+                          strokeWidth: singleDataPoint ? "0" : "3",
+                          strokeLinecap: "round",
+                          strokeLinejoin: "round"
+                        }),
+
+                        // 访问量数据点
+                        weekData.map((item, index) => {
+                          const x = getPointX(index);
+                          const y = getVisitsY(item.visits);
+                          return React.createElement("circle", { key: `visits-${index}`, cx: x, cy: y, r: "4", fill: "#3b82f6", stroke: "#fff", strokeWidth: "2" });
+                        }),
+
+                        // 提交量折线
+                        React.createElement("path", {
+                          d: generateLinePath((item) => getSubmitsY(item.submits)),
+                          fill: "none",
+                          stroke: "#10b981",
+                          strokeWidth: singleDataPoint ? "0" : "3",
+                          strokeLinecap: "round",
+                          strokeLinejoin: "round"
+                        }),
+
+                        // 提交量数据点
+                        weekData.map((item, index) => {
+                          const x = getPointX(index);
+                          const y = getSubmitsY(item.submits);
+                          return React.createElement("circle", { key: `submits-${index}`, cx: x, cy: y, r: "4", fill: "#10b981", stroke: "#fff", strokeWidth: "2" });
+                        }),
+
+                        // X轴标签
+                        weekData.map((item, index) => {
+                          const x = getPointX(index);
+                          return React.createElement("text", {
+                            key: `x-label-${index}`,
+                            x: x,
+                            y: "350",
+                            textAnchor: "middle",
+                            fontSize: "12",
+                            fill: "#64748b"
+                          }, item.date);
+                        }),
+
+                        // Y轴标签（访问量）
+                        [0, 1, 2, 3, 4].map(i => {
+                          const y = 320 - (i / 4) * 280;
+                          const visitsValue = Math.round((1 - i / 4) * maxVisits);
+                          return React.createElement("text", {
+                            key: `y-label-${i}`,
+                            x: "60",
+                            y: y + 5,
+                            textAnchor: "end",
+                            fontSize: "12",
+                            fill: "#64748b"
+                          }, visitsValue);
+                        })
+                      )
+                    );
+                  })()
+                ),
+
+                // 用户来源分布图表（动态环形图）
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5" },
+                  React.createElement("div", { className: "flex items-center justify-between mb-6" },
+                    React.createElement("h4", { className: "text-md font-semibold text-slate-800" }, "用户来源分布"),
+                  ),
+                  React.createElement("div", { className: "flex items-center justify-between h-64" },
+                    // 动态环形图
+                    React.createElement("div", { className: "relative w-48 h-48" },
+                      React.createElement("div", {
+                        className: "absolute inset-0 rounded-full",
+                        style: {
+                          background: `conic-gradient(
+                            ${sourceData[0].color} 0% ${sourceData[0].value}%,
+                            ${sourceData[1].color} ${sourceData[0].value}% ${sourceData[0].value + sourceData[1].value}%,
+                            ${sourceData[2].color} ${sourceData[0].value + sourceData[1].value}% ${sourceData[0].value + sourceData[1].value + sourceData[2].value}%,
+                            ${sourceData[3].color} ${sourceData[0].value + sourceData[1].value + sourceData[2].value}% 100%
+                          )`
+                        }
+                      }),
+                      React.createElement("div", { className: "absolute inset-[25%] bg-white rounded-full flex items-center justify-center" },
+                        React.createElement("div", { className: "text-center" },
+                          React.createElement("div", { className: "text-2xl font-bold text-slate-800" }, "100%"),
+                          React.createElement("div", { className: "text-xs text-slate-500" }, "总流量")
+                        )
+                      )
+                    ),
+                    // 图例
+                    React.createElement("div", { className: "space-y-3" },
+                      sourceData.map((item, index) => (
+                        React.createElement("div", { key: index, className: "flex items-center gap-2" },
+                          React.createElement("span", { className: "w-3 h-3 rounded-full", style: { backgroundColor: item.color } }),
+                          React.createElement("span", { className: "text-sm text-slate-700 w-24" }, item.name),
+                          React.createElement("span", { className: "text-sm font-medium text-slate-800" }, `${item.value}%`)
+                        )
+                      ))
+                    )
+                  )
+                )
+              ),
+
+              // 用户提交记录表格
+              (() => {
+                const pageSize = 5;
+
+                // 过滤记录
+                const filteredRecords = userRecords.filter(record =>
+                  record.name.includes(searchTerm) ||
+                  record.userId.includes(searchTerm) ||
+                  record.phone.includes(searchTerm)
+                );
+
+                // 分页处理
+                const totalPages = Math.ceil(filteredRecords.length / pageSize);
+                const startIndex = (currentPage - 1) * pageSize;
+                const paginatedRecords = filteredRecords.slice(startIndex, startIndex + pageSize);
+
+                // 导出为CSV
+                const exportToCSV = () => {
+                  const headers = ['用户编号', '用户ID', '手机号', '姓名', '提交时间'];
+                  const csvContent = [
+                    headers.join(','),
+                    ...filteredRecords.map(record => [record.id, record.userId, record.phone, record.name, record.submitTime].join(','))
+                  ].join('\n');
+
+                  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const link = document.createElement('a');
+                  link.href = URL.createObjectURL(blob);
+                  link.download = `用户提交记录_${new Date().toLocaleDateString()}.csv`;
+                  link.click();
+                  setShowExportDropdown(false);
+                };
+
+                // 导出为Excel (简单实现)
+                const exportToExcel = () => {
+                  const tableContent = `
+                    <table>
+                      <tr><th>用户编号</th><th>用户ID</th><th>手机号</th><th>姓名</th><th>提交时间</th></tr>
+                      ${filteredRecords.map(record => `
+                        <tr><td>${record.id}</td><td>${record.userId}</td><td>${record.phone}</td><td>${record.name}</td><td>${record.submitTime}</td></tr>
+                      `).join('')}
+                    </table>
+                  `;
+
+                  const blob = new Blob([tableContent], { type: 'application/vnd.ms-excel' });
+                  const link = document.createElement('a');
+                  link.href = URL.createObjectURL(blob);
+                  link.download = `用户提交记录_${new Date().toLocaleDateString()}.xls`;
+                  link.click();
+                  setShowExportDropdown(false);
+                };
+
+                // 导出为PDF (简单实现)
+                const exportToPDF = () => {
+                  alert('PDF导出功能需要引入额外的库（如jsPDF），这里仅展示功能入口');
+                  setShowExportDropdown(false);
+                };
+
+                return React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-5" },
+                  React.createElement("div", { className: "flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4" },
+                    React.createElement("div", { className: "flex-1" },
+                      React.createElement("h4", { className: "text-md font-semibold text-slate-800" }, "用户提交记录")
+                    ),
+                    React.createElement("div", { className: "flex items-center gap-3" },
+                      React.createElement("input", {
+                        type: "text",
+                        placeholder: "搜索用户...",
+                        value: searchTerm,
+                        onChange: (e) => { setSearchTerm(e.target.value); setCurrentPage(1); },
+                        className: "border border-slate-200 rounded-xl px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      }),
+                      React.createElement("div", { className: "relative" },
+                        React.createElement("button", {
+                          className: "bg-blue-600 text-white hover:bg-blue-700 text-sm font-medium px-4 py-1.5 rounded-lg shadow-lg shadow-blue-500/30 transition-all duration-200 flex items-center gap-1",
+                          onClick: () => setShowExportDropdown(!showExportDropdown)
+                        },
+                          React.createElement(Icon, { name: "Download", className: "w-4 h-4" }),
+                          "导出数据"
+                        ),
+                        showExportDropdown && React.createElement("div", {
+                          className: "absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-10 min-w-[140px]"
+                        },
+                          React.createElement("button", {
+                            className: "w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-700 hover:bg-slate-100 flex items-center gap-2",
+                            onClick: exportToExcel
+                          },
+                            React.createElement("span", { className: "w-2 h-2 rounded-full bg-green-500" }),
+                            "Excel格式"
+                          ),
+                          React.createElement("button", {
+                            className: "w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-700 hover:bg-slate-100 flex items-center gap-2",
+                            onClick: exportToCSV
+                          },
+                            React.createElement("span", { className: "w-2 h-2 rounded-full bg-blue-500" }),
+                            "CSV格式"
+                          ),
+                          React.createElement("button", {
+                            className: "w-full text-left px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 text-slate-700 hover:bg-slate-100 flex items-center gap-2",
+                            onClick: exportToPDF
+                          },
+                            React.createElement("span", { className: "w-2 h-2 rounded-full bg-red-500" }),
+                            "PDF格式"
+                          )
+                        )
+                      )
+                    )
+                  ),
+                  React.createElement("div", { className: "overflow-x-auto" },
+                    React.createElement("table", { className: "w-full text-sm" },
+                      React.createElement("thead", null,
+                        React.createElement("tr", { className: "border-b border-slate-200" },
+                          React.createElement("th", { className: "text-left py-3 px-4 font-medium text-slate-600" }, "用户编号"),
+                          React.createElement("th", { className: "text-left py-3 px-4 font-medium text-slate-600" }, "用户ID"),
+                          React.createElement("th", { className: "text-left py-3 px-4 font-medium text-slate-600" }, "手机号"),
+                          React.createElement("th", { className: "text-left py-3 px-4 font-medium text-slate-600" }, "姓名"),
+                          React.createElement("th", { className: "text-left py-3 px-4 font-medium text-slate-600" }, "提交时间"),
+                          React.createElement("th", { className: "text-left py-3 px-4 font-medium text-slate-600" }, "操作")
+                        )
+                      ),
+                      React.createElement("tbody", null,
+                        paginatedRecords.map(record => (
+                          React.createElement("tr", { key: record.id, className: "border-b border-slate-100 hover:bg-slate-50 transition-colors transition-colors" },
+                            React.createElement("td", { className: "py-3 px-4 text-slate-800" }, record.id),
+                            React.createElement("td", { className: "py-3 px-4 text-slate-800" }, record.userId),
+                            React.createElement("td", { className: "py-3 px-4 text-slate-800" }, record.phone),
+                            React.createElement("td", { className: "py-3 px-4 text-slate-800" }, record.name),
+                            React.createElement("td", { className: "py-3 px-4 text-slate-800" }, record.submitTime),
+                            React.createElement("td", { className: "py-3 px-4" },
+                              React.createElement("div", { className: "flex items-center gap-2" },
+                                React.createElement("button", {
+                                  className: "text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1",
+                                  onClick: () => alert("查看详情功能")
+                                },
+                                  React.createElement(Icon, { name: "List", className: "w-3 h-3" }),
+                                  "详情"
+                                ),
+                                React.createElement("button", {
+                                  className: "text-green-600 hover:text-green-800 text-xs flex items-center gap-1",
+                                  onClick: () => alert("查看用户信息功能")
+                                },
+                                  React.createElement(Icon, { name: "User", className: "w-3 h-3" }),
+                                  "用户"
+                                )
+                              )
+                            )
+                          )
+                        ))
+                      )
+                    )
+                  ),
+                  // 分页控件
+                  totalPages > 1 && React.createElement("div", { className: "flex items-center justify-between mt-4" },
+                    React.createElement("span", { className: "text-sm text-slate-500" },
+                      `显示 ${startIndex + 1}-${Math.min(startIndex + pageSize, filteredRecords.length)} 条，共 ${filteredRecords.length} 条记录`
+                    ),
+                    React.createElement("div", { className: "flex items-center gap-2" },
+                      React.createElement("button", {
+                        className: "px-3 py-1 border border-slate-200 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed",
+                        disabled: currentPage === 1,
+                        onClick: () => setCurrentPage(prev => Math.max(1, prev - 1))
+                      }, "上一页"),
+                      Array.from({ length: totalPages }).map((_, i) => (
+                        React.createElement("button", {
+                          key: i,
+                          className: `px-3 py-1 rounded-xl text-sm ${currentPage === i + 1 ? 'bg-blue-600 text-white' : 'border border-slate-200'}`,
+                          onClick: () => setCurrentPage(i + 1)
+                        }, i + 1)
+                      )),
+                      React.createElement("button", {
+                        className: "px-3 py-1 border border-slate-200 rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed",
+                        disabled: currentPage === totalPages,
+                        onClick: () => setCurrentPage(prev => Math.min(totalPages, prev + 1))
+                      }, "下一页")
+                    )
+                  )
+                );
+              })()
+            );
+          }
+          case 'qr': {
+            // 状态已在组件顶层定义
+            const baseUrl = window.location.origin + window.location.pathname.replace('detail.html', '');
+
+            // 处理页面选择变化
+            const handlePageChange = (pageId) => {
+              setSelectedPageId(pageId);
+              const newLink = `${baseUrl}page#${activityDetail.activityId}/${pageId}`;
+              setActivityLink(newLink);
+            };
+
+            // 生成二维码
+            const generateQRCode = () => {
+              if (!activityLink.trim()) {
+                alert('请输入有效的活动链接');
+                return;
+              }
+
+              // 调试信息
+              console.log('生成二维码 - Logo状态:', { logoType, logoImage: !!logoImage, coverUrl: !!activityDetail.coverUrl });
+
+              setGenerating(true);
+
+              // 使用 setTimeout 确保 QRCode 库已加载
+              setTimeout(() => {
+                try {
+                  const size = qrSize === 0 ? customSize : qrSize;
+
+                  // 检查 QRCode 构造函数是否可用
+                  if (typeof QRCode === 'undefined') {
+                    throw new Error('QRCode 库未正确加载');
+                  }
+
+                  // 创建临时容器生成二维码
+                  const tempContainer = document.createElement('div');
+                  tempContainer.style.display = 'none';
+                  document.body.appendChild(tempContainer);
+
+                  // 使用 qrcodejs 库生成二维码
+                  const qrCode = new QRCode(tempContainer, {
+                    text: activityLink.trim(),
+                    width: size,
+                    height: size,
+                    colorDark: darkColor,
+                    colorLight: transparentBg ? 'transparent' : lightColor,
+                    correctLevel: QRCode.CorrectLevel.H
+                  });
+
+                  // 等待一小段时间让二维码生成
+                  setTimeout(() => {
+                    try {
+                      const canvas = tempContainer.querySelector('canvas');
+                      if (canvas) {
+                        const ctx = canvas.getContext('2d');
+
+                        // 检查是否需要添加Logo
+                        const hasLogo = (logoType === 'custom' && logoImage) ||
+                                        (logoType === 'default' && activityDetail.coverUrl);
+
+                        if (hasLogo) {
+                          const logoSource = logoType === 'custom' ? logoImage : activityDetail.coverUrl;
+                          const img = new Image();
+
+                          // 在图片加载完成前不删除临时容器
+                          img.crossOrigin = 'anonymous';
+                          img.onload = () => {
+                            try {
+                              // 计算Logo尺寸
+                              const logoWidth = (size * logoSize) / 100;
+                              const logoHeight = (size * logoSize) / 100;
+
+                              // 计算Logo位置（居中）
+                              const logoX = (size - logoWidth) / 2;
+                              const logoY = (size - logoHeight) / 2;
+
+                              // 只有在不透明背景下才绘制白色边框
+                              if (!transparentBg) {
+                                ctx.fillStyle = '#ffffff';
+                                // 使用通用方法绘制圆角矩形
+                                const x = logoX - 2;
+                                const y = logoY - 2;
+                                const w = logoWidth + 4;
+                                const h = logoHeight + 4;
+                                const r = 4;
+                                ctx.beginPath();
+                                ctx.moveTo(x + r, y);
+                                ctx.lineTo(x + w - r, y);
+                                ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                                ctx.lineTo(x + w, y + h - r);
+                                ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                                ctx.lineTo(x + r, y + h);
+                                ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                                ctx.lineTo(x, y + r);
+                                ctx.quadraticCurveTo(x, y, x + r, y);
+                                ctx.closePath();
+                                ctx.fill();
+                              }
+
+                              // 绘制Logo
+                              ctx.drawImage(img, logoX, logoY, logoWidth, logoHeight);
+
+                              // 更新二维码URL
+                              setQrCodeUrl(canvas.toDataURL('image/png'));
+                            } catch (e) {
+                              console.error('绘制Logo失败:', e);
+                              // 如果绘制Logo失败，仍然保存原始二维码
+                              setQrCodeUrl(canvas.toDataURL('image/png'));
+                            } finally {
+                              // 清理临时容器
+                              if (tempContainer.parentNode) {
+                                document.body.removeChild(tempContainer);
+                              }
+                              setGenerating(false);
+                            }
+                          };
+                          img.onerror = () => {
+                            console.error('Logo图片加载失败');
+                            setQrCodeUrl(canvas.toDataURL('image/png'));
+                            // 清理临时容器
+                            if (tempContainer.parentNode) {
+                              document.body.removeChild(tempContainer);
+                            }
+                            setGenerating(false);
+                          };
+                          img.src = logoSource;
+                        } else {
+                          // 不需要Logo，直接保存原始二维码
+                          setQrCodeUrl(canvas.toDataURL('image/png'));
+                          // 清理临时容器
+                          if (tempContainer.parentNode) {
+                            document.body.removeChild(tempContainer);
+                          }
+                          setGenerating(false);
+                        }
+                      } else {
+                        const img = tempContainer.querySelector('img');
+                        if (img) {
+                          setQrCodeUrl(img.src);
+                        } else {
+                          throw new Error('无法获取二维码图片');
+                        }
+                        // 清理临时容器
+                        if (tempContainer.parentNode) {
+                          document.body.removeChild(tempContainer);
+                        }
+                        setGenerating(false);
+                      }
+                    } catch (e) {
+                      console.error('获取二维码图片失败:', e);
+                      alert('生成二维码失败，请重试');
+                      // 清理临时容器
+                      if (tempContainer.parentNode) {
+                        document.body.removeChild(tempContainer);
+                      }
+                      setGenerating(false);
+                    }
+                  }, 100);
+                } catch (error) {
+                  console.error('二维码生成错误:', error);
+                  alert('生成二维码失败，请重试');
+                  setGenerating(false);
+                }
+              }, 50);
+            };
+
+            // 下载二维码
+            const downloadQRCode = () => {
+              if (!qrCodeUrl) {
+                alert('请先生成二维码');
+                return;
+              }
+              const a = document.createElement('a');
+              a.href = qrCodeUrl;
+              const uniqueIdentifier = activityDetail.activity_id || activityDetail.activityId || 'default';
+              a.download = `Qrcode-${uniqueIdentifier}.png`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            };
+
+            // 复制链接
+            const copyLink = () => {
+              navigator.clipboard.writeText(activityLink).then(() => {
+                alert('链接已复制到剪贴板');
+              }).catch(() => {
+                alert('复制失败，请手动复制');
+              });
+            };
+
+            return React.createElement("div", { className: "space-y-6" },
+              React.createElement("div", { className: "flex items-center justify-between" },
+                React.createElement("h3", { className: "text-lg font-bold text-slate-800" }, "链接生成器")
+              ),
+
+              React.createElement("div", { className: "grid grid-cols-1 lg:grid-cols-3 gap-6" },
+                // 左侧配置区
+                React.createElement("div", { className: "bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-6 space-y-6" },
+                  React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-3" }, "配置选项"),
+
+                  // 选择页面
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "选择页面"),
+                    React.createElement("select", {
+                      value: selectedPageId || (pages.length > 0 ? pages[0].id : 'page-1'),
+                      onChange: (e) => handlePageChange(e.target.value),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200 mb-2"
+                    },
+                      pages.map((page) => (
+                        React.createElement("option", {
+                          key: page.id,
+                          value: page.id
+                        }, page.name || '未命名')
+                      ))
+                    )
+                  ),
+
+                  // 活动链接
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "页面链接"),
+                    React.createElement("div", { className: "flex gap-2" },
+                      React.createElement("input", {
+                        type: "text",
+                        value: activityLink,
+                        onChange: (e) => setActivityLink(e.target.value),
+                        className: "flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                      }),
+                      React.createElement("button", {
+                        onClick: copyLink,
+                        className: "bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl text-sm transition-colors whitespace-nowrap"
+                      }, "复制链接")
+                    )
+                  ),
+
+                  // 二维码大小
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "二维码大小"),
+                    React.createElement("select", {
+                      value: qrSize,
+                      onChange: (e) => setQrSize(Number(e.target.value)),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200 mb-2"
+                    },
+                      React.createElement("option", { value: 200 }, "小 (200px)"),
+                      React.createElement("option", { value: 400 }, "中 (400px)"),
+                      React.createElement("option", { value: 600 }, "大 (600px)"),
+                      React.createElement("option", { value: 0 }, "自定义")
+                    ),
+                    qrSize === 0 && React.createElement("input", {
+                      type: "number",
+                      min: "100",
+                      max: "1000",
+                      value: customSize,
+                      onChange: (e) => setCustomSize(Number(e.target.value)),
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                    })
+                  ),
+
+                  // Logo设置
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "Logo设置"),
+                    React.createElement("select", {
+                      value: logoType,
+                      onChange: (e) => {
+                        const newLogoType = e.target.value;
+                        setLogoType(newLogoType);
+                        if (newLogoType === 'none') {
+                          setLogoImage(null);
+                        }
+                      },
+                      className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200 mb-2"
+                    },
+                      React.createElement("option", { value: "none" }, "无Logo"),
+                      React.createElement("option", { value: "default" }, "使用活动封面"),
+                      React.createElement("option", { value: "custom" }, "自定义Logo")
+                    ),
+                    logoType === "custom" && React.createElement("div", null,
+                      React.createElement("div", {
+                        className: "border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer",
+                        onClick: () => {
+                          const fileInput = document.createElement('input');
+                          fileInput.type = 'file';
+                          fileInput.accept = 'image/*';
+                          fileInput.onchange = (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              console.log('选择Logo文件:', file.name, file.size);
+                              const reader = new FileReader();
+                              reader.onload = (event) => {
+                                console.log('Logo文件读取完成');
+                                setLogoImage(event.target.result);
+                              };
+                              reader.onerror = (error) => {
+                                console.error('Logo文件读取失败:', error);
+                                alert('Logo文件读取失败，请重试');
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          };
+                          fileInput.click();
+                        }
+                      },
+                        logoImage ? (
+                          React.createElement("div", null,
+                            React.createElement("img", {
+                              src: logoImage,
+                              alt: "Logo预览",
+                              className: "w-20 h-20 object-contain mx-auto mb-2"
+                            }),
+                            React.createElement("div", { className: "text-xs text-slate-500" }, "点击更换Logo")
+                          )
+                        ) : (
+                          React.createElement("div", null,
+                            React.createElement("div", { className: "text-gray-400 mb-2" }, "点击上传Logo"),
+                            React.createElement("div", { className: "text-xs text-slate-500" }, "建议尺寸：100*100px，大小不超过200KB")
+                          )
+                        )
+                      ),
+                      logoImage && React.createElement("div", null,
+                        React.createElement("label", { className: "block text-xs text-slate-600 mb-1" }, "Logo大小比例 (%)"),
+                        React.createElement("input", {
+                          type: "range",
+                          min: "10",
+                          max: "40",
+                          value: logoSize,
+                          onChange: (e) => setLogoSize(Number(e.target.value)),
+                          className: "w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        }),
+                        React.createElement("div", { className: "text-xs text-center text-slate-500 mt-1" },
+                          `${logoSize}%`
+                        )
+                      )
+                    ),
+                    logoType === "default" && activityDetail.coverUrl && React.createElement("div", null,
+                      React.createElement("div", { className: "text-xs text-slate-600 mb-2" }, "使用活动封面作为Logo"),
+                      React.createElement("img", {
+                        src: activityDetail.coverUrl,
+                        alt: "活动封面Logo",
+                        className: "w-16 h-16 object-cover mx-auto rounded-lg"
+                      }),
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-xs text-slate-600 mb-1 mt-3" }, "Logo大小比例 (%)"),
+                        React.createElement("input", {
+                          type: "range",
+                          min: "10",
+                          max: "40",
+                          value: logoSize,
+                          onChange: (e) => setLogoSize(Number(e.target.value)),
+                          className: "w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                        }),
+                        React.createElement("div", { className: "text-xs text-center text-slate-500 mt-1" },
+                          `${logoSize}%`
+                        )
+                      )
+                    )
+                  ),
+
+                  // 颜色配置
+                  React.createElement("div", null,
+                    React.createElement("label", { className: "block text-sm font-medium text-slate-700 mb-2" }, "颜色配置"),
+                    React.createElement("div", { className: "grid grid-cols-2 gap-3 mb-3" },
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-xs text-slate-600 mb-1" }, "图案颜色"),
+                        React.createElement("input", {
+                          type: "color",
+                          value: darkColor,
+                          onChange: (e) => setDarkColor(e.target.value),
+                          className: "w-full h-10 rounded-lg cursor-pointer"
+                        })
+                      ),
+                      React.createElement("div", null,
+                        React.createElement("label", { className: "block text-xs text-slate-600 mb-1" }, "背景颜色"),
+                        React.createElement("input", {
+                          type: "color",
+                          value: lightColor,
+                          onChange: (e) => setLightColor(e.target.value),
+                          disabled: transparentBg,
+                          className: "w-full h-10 rounded-lg cursor-pointer " + (transparentBg ? "opacity-50 cursor-not-allowed" : "")
+                        })
+                      )
+                    ),
+                    React.createElement("div", { className: "flex items-center gap-2" },
+                      React.createElement("input", {
+                        type: "checkbox",
+                        id: "transparentBg",
+                        checked: transparentBg,
+                        onChange: (e) => setTransparentBg(e.target.checked),
+                        className: "w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      }),
+                      React.createElement("label", {
+                        htmlFor: "transparentBg",
+                        className: "text-sm text-slate-700 cursor-pointer"
+                      }, "透明背景")
+                    )
+                  ),
+
+                  // 生成按钮
+                  React.createElement("button", {
+                    onClick: generateQRCode,
+                    disabled: generating,
+                    className: "w-full bg-blue-600 text-white hover:bg-blue-700 px-4 py-3 rounded-lg text-sm font-medium shadow-lg shadow-blue-500/30 transition-all duration-200 flex items-center justify-center gap-2"
+                  },
+                    generating ? "生成中..." : "生成二维码"
+                  )
+                ),
+
+                // 右侧预览区
+                React.createElement("div", { className: "lg:col-span-2 bg-white rounded-2xl border border-slate-200/50 shadow-sm border border-gray-100 p-6 space-y-6" },
+                  React.createElement("h4", { className: "text-md font-semibold text-slate-800 border-b pb-3" }, "二维码预览"),
+
+                  React.createElement("div", { className: "flex flex-col items-center justify-center py-8" },
+                    qrCodeUrl ? (
+                      React.createElement("div", { className: "space-y-6 w-full max-w-md" },
+                        React.createElement("div", { className: "flex justify-center" },
+                          React.createElement("img", {
+                            src: qrCodeUrl,
+                            alt: "活动二维码",
+                            className: "border border-gray-200 rounded-xl"
+                          })
+                        ),
+                        React.createElement("div", { className: "flex gap-3 justify-center" },
+                          React.createElement("button", {
+                            onClick: downloadQRCode,
+                            className: "bg-green-600 text-white hover:bg-green-700 px-4 py-2.5 text-sm font-medium rounded-lg shadow-lg shadow-green-500/30 transition-all duration-200 flex items-center gap-2"
+                          },
+                            React.createElement(Icon, { name: "Download", className: "w-4 h-4" }),
+                            "下载二维码"
+                          ),
+                          React.createElement("button", {
+                            onClick: generateQRCode,
+                            className: "bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-200 transition-all duration-200 flex items-center gap-2"
+                          },
+                            "重新生成"
+                          )
+                        )
+                      )
+                    ) : (
+                      React.createElement("div", { className: "border-2 border-dashed border-slate-200 rounded-xl p-12 text-center w-full max-w-md" },
+                        React.createElement(Icon, { name: "QrCode", className: "w-20 h-20 text-slate-300 mx-auto mb-4" }),
+                        React.createElement("p", { className: "text-slate-500 mb-2" }, "暂无二维码"),
+                        React.createElement("p", { className: "text-xs text-gray-400" }, "请在左侧配置参数后点击「生成二维码」按钮")
+                      )
+                    )
+                  ),
+
+                  // 提示信息
+                  React.createElement("div", { className: "bg-blue-50 border border-blue-100 rounded-xl p-4" },
+                    React.createElement("h5", { className: "text-sm font-medium text-blue-800 mb-2" }, "使用说明"),
+                    React.createElement("ul", { className: "text-xs text-blue-700 space-y-1" },
+                      React.createElement("li", null, "• 扫描二维码即可直接访问活动页面"),
+                      React.createElement("li", null, "• 二维码永久有效，活动修改后无需重新生成"),
+                      React.createElement("li", null, "• 可以将二维码打印或分享到各个宣传渠道")
+                    )
+                  )
+                )
+              )
+            );
+          }
+          default:
+            return React.createElement("div", null, "其他页面开发中...");
+        }
+      };
+
+      return React.createElement("div", { className: "min-h-screen bg-[#f1f5f9] flex flex-col font-sans" },
+        React.createElement("header", { className: "h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 shadow-sm z-30 fixed top-0 left-0 right-0" },
+          React.createElement("div", { className: "flex items-center space-x-4 w-1/3" },
+            React.createElement("a", { href: "homepage.html", className: "font-bold text-slate-800 hover:text-blue-600 transition-colors" }, "活动管理系统"),
+            React.createElement("div", { className: "h-5 w-px bg-slate-200" }),
+            React.createElement("div", { className: "text-sm text-slate-600 flex items-center space-x-2" },
+              React.createElement("a", { href: "list.html", className: "text-slate-500 hover:text-blue-600 transition-colors" }, "活动列表"),
+              React.createElement("span", { className: "text-slate-400" }, "/"),
+              React.createElement("span", { className: "text-slate-800" }, activityDetail.name),
+              React.createElement("span", { className: "text-slate-400" }, "/"),
+              React.createElement("span", { className: "text-slate-800" }, menuItems.find(item => item.id === activeMenu)?.label || '基础信息')
+            )
+          ),
+          React.createElement("div", { className: "flex items-center justify-end space-x-3 w-1/3" },
+            React.createElement("div", { className: "flex items-center space-x-4 text-sm text-slate-600" },
+              React.createElement("span", null, timeInfo.date),
+              React.createElement("span", null, timeInfo.weekday),
+              React.createElement("span", { className: "font-mono" }, timeInfo.time)
+            ),
+            // 只有在基础信息和奖品信息页面显示保存相关内容
+            (activeMenu === 'base' || activeMenu === 'prize') && React.createElement(React.Fragment, null,
+              getModifiedCount() > 0 && React.createElement("span", {
+                className: "text-sm text-orange-500 font-medium mr-2"
+              },
+                "已修改", getModifiedCount(), "个元素"
+              ),
+              React.createElement("button", {
+                onClick: handleSave,
+                className: isModified
+                  ? "flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-md shadow-blue-500/30 transition-all"
+                  : "flex items-center px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-sm font-bold rounded-xl transition-all"
+              },
+                React.createElement(Icon, { name: "Save", className: "w-4 h-4 mr-1.5" }),
+                "保存"
+              )
+            )
+          )
+        ),
+        React.createElement("div", { className: "flex pt-16 min-h-screen" },
+          React.createElement("aside", {
+            className: "bg-white border-r border-slate-200 shrink-0 overflow-y-auto z-10 shadow-[2px_0_8px_rgba(0,0,0,0.02)] fixed left-0 top-16 h-[calc(100vh-4rem)] w-48"
+          },
+            React.createElement("nav", { className: "py-2 h-full flex flex-col overflow-hidden" },
+              menuItems.map(item => {
+                // 处理可视化编辑跳转，带上活动ID到hash
+                let href = item.path;
+                if (item.id === 'canvas' && activityDetail.activityId && activityDetail.activityId.length > 0) {
+                  href = `canvas.html#${activityDetail.activityId}`;
+                }
+                // 内部标签页跳转保持格式 #activityId/pageId
+                if (item.path.startsWith('#')) {
+                  href = `#${activityDetail.activityId}/${item.id}`;
+                }
+
+                return React.createElement("a", {
+                  key: item.id,
+                  href: href,
+                  onClick: (e) => {
+                    if (item.path.startsWith('#')) {
+                      e.preventDefault();
+                      setActiveMenu(item.id);
+                      window.location.hash = `${activityDetail.activityId}/${item.id}`;
+                    }
+                  },
+                  className: `flex items-center px-6 py-3 text-sm font-medium transition-all whitespace-nowrap ${activeMenu === item.id ? 'text-blue-600 bg-blue-50 border-r-4 border-blue-600' : 'text-slate-700 hover:bg-slate-50 transition-colors'}`
+                },
+                React.createElement(Icon, { name: item.icon, className: "w-5 h-5 flex-shrink-0" }),
+                React.createElement("span", { className: "ml-3 text-ellipsis overflow-hidden whitespace-nowrap" }, item.label)
+              )
+              }),
+              // 用户信息 - 底部
+              React.createElement("div", { className: "mt-auto pt-0 border-t border-slate-200" },
+                React.createElement("div", {
+                  className: "relative",
+                  onClick: () => setIsUserMenuOpen(true)
+                },
+                  React.createElement("div", { className: "flex items-center px-6 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer" },
+                    React.createElement(Icon, { name: "User", className: "w-5 h-5 flex-shrink-0" }),
+                    React.createElement("span", { className: "ml-3 text-ellipsis overflow-hidden whitespace-nowrap" },
+                      username,
+                      userRoleId && roleMap[userRoleId] && React.createElement("span", {
+                        className: `ml-2 text-xs ${roleColorMap[userRoleId] || 'bg-gray-100 text-gray-800'} px-1.5 py-0.5 rounded`
+                      }, roleMap[userRoleId])
+                    )
+                  )
+                )
+              )
+            )
+          ),
+          React.createElement("main", { className: "flex-1 p-6 overflow-y-auto custom-scrollbar ml-48" },
+            renderSubPage(),
+            // 奖品编辑/新增弹窗
+            showPrizeModal && React.createElement(React.Fragment, null,
+              // 遮罩层 - 使用模糊效果和柔和的背景
+              React.createElement("div", {
+                className: "fixed inset-0 z-[9999] flex items-center justify-center",
+                onClick: () => setShowPrizeModal(false)
+              },
+                React.createElement("div", { className: "absolute inset-0 bg-slate-900/40 backdrop-blur-xl" }),
+                // 弹窗内容 - 更大的圆角、更好的阴影
+                React.createElement("div", {
+                  className: "relative w-full max-w-lg bg-white border border-slate-200 rounded-2xl shadow-2xl p-8 z-[10000] max-h-[90vh] overflow-y-auto",
+                  onClick: (e) => e.stopPropagation()
+                },
+                  // 弹窗标题
+                  React.createElement("div", { className: "flex items-center justify-between mb-6" },
+                    React.createElement("h3", { className: "text-xl font-bold text-slate-900" },
+                      editingPrize ? "编辑奖品" : "添加奖品"
+                    ),
+                    React.createElement("button", {
+                      onClick: () => setShowPrizeModal(false),
+                      className: "p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all duration-200"
+                    }, "✕")
+                  ),
+                  // 弹窗表单
+                  React.createElement("div", { className: "space-y-5" },
+                    // 奖品名称
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-semibold text-slate-700 mb-2" }, "奖品名称"),
+                      React.createElement("input", {
+                        type: "text",
+                        value: prizeFormData.name,
+                        onChange: (e) => setPrizeFormData(prev => ({ ...prev, name: e.target.value })),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                        placeholder: "请输入奖品名称"
+                      })
+                    ),
+                    // 奖品类型
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-semibold text-slate-700 mb-2" }, "奖品类型"),
+                      React.createElement("div", { className: "flex p-1 bg-slate-100 border border-slate-200 rounded-xl" },
+                        React.createElement("button", {
+                          onClick: () => setPrizeFormData(prev => ({ ...prev, type: 1 })),
+                          className: `flex-1 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ${
+                            prizeFormData.type === 1
+                              ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50'
+                              : 'text-slate-500 hover:text-slate-700'
+                          }`
+                        }, "红包"),
+                        React.createElement("button", {
+                          onClick: () => setPrizeFormData(prev => ({ ...prev, type: 2 })),
+                          className: `flex-1 py-2.5 text-sm font-bold rounded-lg transition-all duration-200 ${
+                            prizeFormData.type === 2
+                              ? 'bg-white text-blue-600 shadow-sm border border-slate-200/50'
+                              : 'text-slate-500 hover:text-slate-700'
+                          }`
+                        }, "物品")
+                      )
+                    ),
+                    // 金额（红包类型时显示）
+                    prizeFormData.type === 1 && React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-semibold text-slate-700 mb-2" }, "金额（分）"),
+                      React.createElement("input", {
+                        type: "number",
+                        min: "0",
+                        value: prizeFormData.amount,
+                        onChange: (e) => setPrizeFormData(prev => ({ ...prev, amount: parseInt(e.target.value) || 0 })),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                        placeholder: "请输入红包金额（单位：分）"
+                      })
+                    ),
+                    // 奖品数量
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-semibold text-slate-700 mb-2" }, "奖品数量"),
+                      React.createElement("input", {
+                        type: "number",
+                        min: "0",
+                        value: prizeFormData.num,
+                        onChange: (e) => setPrizeFormData(prev => ({ ...prev, num: parseInt(e.target.value) || 0 })),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                        placeholder: "请输入奖品数量"
+                      })
+                    ),
+                    // 可中奖最大次数
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-semibold text-slate-700 mb-2" }, "可中奖最大次数"),
+                      React.createElement("input", {
+                        type: "number",
+                        min: "1",
+                        value: prizeFormData.maxWinCount,
+                        onChange: (e) => setPrizeFormData(prev => ({ ...prev, maxWinCount: parseInt(e.target.value) || 1 })),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200",
+                        placeholder: "请输入可中奖最大次数"
+                      })
+                    ),
+                    // 可中奖时间范围
+                    React.createElement("div", null,
+                      React.createElement("label", { className: "block text-sm font-semibold text-slate-700 mb-2" }, "可中奖时间范围"),
+                      React.createElement("select", {
+                        value: prizeFormData.winTimeRange,
+                        onChange: (e) => setPrizeFormData(prev => ({ ...prev, winTimeRange: e.target.value })),
+                        className: "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 hover:bg-slate-50 transition-all duration-200"
+                      },
+                        React.createElement("option", { value: "day" }, "每天"),
+                        React.createElement("option", { value: "week" }, "每周"),
+                        React.createElement("option", { value: "month" }, "每月"),
+                        React.createElement("option", { value: "activity" }, "整个活动")
+                      )
+                    )
+                  ),
+                  // 弹窗按钮 - 更好的悬停效果和阴影
+                  React.createElement("div", { className: "flex items-center justify-between pt-6 border-t border-slate-200 mt-6" },
+                    React.createElement("button", {
+                      onClick: () => setShowPrizeModal(false),
+                      className: "px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition-all duration-200"
+                    }, "取消"),
+                    React.createElement("button", {
+                      onClick: handleSavePrize,
+                      className: "px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-lg shadow-blue-500/30 transition-all duration-200"
+                    }, "保存")
+                  )
+                )
+              )
+            ),
+            // 用户菜单弹窗
+            React.createElement(UserMenuModal, {
+              isOpen: isUserMenuOpen,
+              onClose: () => setIsUserMenuOpen(false),
+              onChangePassword: () => setIsChangePasswordModalOpen(true),
+              onLogout: handleLogout
+            }),
+            // 修改密码弹窗
+            React.createElement(ChangePasswordModal, {
+              isOpen: isChangePasswordModalOpen,
+              onClose: () => setIsChangePasswordModalOpen(false),
+              onSuccess: handleChangePasswordSuccess
+            })
+          )
+        )
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(React.createElement(App));
+  </script>
+</body>
+</html>
