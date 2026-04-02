@@ -1,0 +1,82 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "confirm": "确认",
+    "cancel": "取消",
+    "submit": "提交",
+    "back": "返回",
+    "next": "下一步",
+    "previous": "上一步",
+    "save": "保存",
+    "edit": "编辑",
+    "delete": "删除",
+    "search": "搜索",
+    "reset": "重置",
+    "clear": "清空"
+  },
+  "home": {
+    "serviceHall": "服务大厅",
+    "slogan": "民有所呼，我有所应",
+    "statistics": {
+      "volunteers": "志愿者",
+      "serviceCount": "服务次数",
+      "serviceTime": "服务时长"
+    },
+    "quickService": {
+      "speedPurchase": "速购位",
+      "aiService": "AI便民服务",
+      "efficientSlogan": "高效便民，请参与提案！",
+      "smartSlogan": "智享生活，触手可及！"
+    },
+    "youClickIHandle": "您点我办，精准高效",
+    "services": {
+      "basicLifeHelp": {
+        "title": "基础生活帮助",
+        "description": "生活陪伴，生活习惯管理"
+      },
+      "specialCare": {
+        "title": "特殊人群护理",
+        "description": "残障照顾，康复护理"
+      },
+      "travelHelp": {
+        "title": "出行帮助",
+        "description": "就医出行陪伴，交通工具协调"
+      },
+      "medicalSupport": {
+        "title": "医疗健康支持",
+        "description": "健康呵护，身心健康咨询"
+      },
+      "pocketButler": {
+        "title": "口袋管家",
+        "description": "医疗挂号，生活日程提醒"
+      },
+      "childEducation": {
+        "title": "儿童教育辅助",
+        "description": "幼托少年，休闲玩乐"
+      }
+    },
+    "registration": {
+      "volunteerRegister": "志愿者注册",
+      "organizationRegister": "志愿组织注册"
+    },
+    "focusBanner": "聚焦民生关键小事"
+  },
+  "navigation": {
+    "home": "首页",
+    "discover": "发现",
+    "activity": "活动",
+    "profile": "我的"
+  },
+  "profile": {
+    "title": "个人中心",
+    "settings": "设置",
+    "language": "语言",
+    "about": "关于",
+    "logout": "退出登录"
+  },
+  "language": {
+    "chinese": "中文",
+    "english": "English",
+    "switchLanguage": "切换语言"
+  }
+} 

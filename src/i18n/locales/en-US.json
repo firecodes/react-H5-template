@@ -1,0 +1,82 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "search": "Search",
+    "reset": "Reset",
+    "clear": "Clear"
+  },
+  "home": {
+    "serviceHall": "Service Hall",
+    "slogan": "Where people call, we respond",
+    "statistics": {
+      "volunteers": "Volunteers",
+      "serviceCount": "Services",
+      "serviceTime": "Service Hours"
+    },
+    "quickService": {
+      "speedPurchase": "Quick Purchase",
+      "aiService": "AI Convenience Service",
+      "efficientSlogan": "Efficient and convenient, join the proposal!",
+      "smartSlogan": "Smart living, within reach!"
+    },
+    "youClickIHandle": "You Click, We Handle - Precise & Efficient",
+    "services": {
+      "basicLifeHelp": {
+        "title": "Basic Life Assistance",
+        "description": "Life companionship, lifestyle management"
+      },
+      "specialCare": {
+        "title": "Special Care",
+        "description": "Disability care, rehabilitation nursing"
+      },
+      "travelHelp": {
+        "title": "Travel Assistance",
+        "description": "Medical travel companionship, transportation coordination"
+      },
+      "medicalSupport": {
+        "title": "Medical Health Support",
+        "description": "Health care, physical and mental health consultation"
+      },
+      "pocketButler": {
+        "title": "Pocket Butler",
+        "description": "Medical appointments, daily schedule reminders"
+      },
+      "childEducation": {
+        "title": "Child Education Support",
+        "description": "Childcare, leisure and entertainment"
+      }
+    },
+    "registration": {
+      "volunteerRegister": "Volunteer Registration",
+      "organizationRegister": "Organization Registration"
+    },
+    "focusBanner": "Focus on Key People's Livelihood Issues"
+  },
+  "navigation": {
+    "home": "Home",
+    "discover": "Discover",
+    "activity": "Activity",
+    "profile": "Profile"
+  },
+  "profile": {
+    "title": "Profile",
+    "settings": "Settings",
+    "language": "Language",
+    "about": "About",
+    "logout": "Logout"
+  },
+  "language": {
+    "chinese": "中文",
+    "english": "English",
+    "switchLanguage": "Switch Language"
+  }
+} 
